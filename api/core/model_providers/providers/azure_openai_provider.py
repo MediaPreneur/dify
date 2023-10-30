@@ -275,64 +275,61 @@ class AzureOpenAIProvider(BaseModelProvider):
         :param obfuscated:
         :return:
         """
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            # convert old provider config to provider models
-            self._convert_provider_config_to_model_config()
-
-            provider_model = self._get_provider_model(model_name, model_type)
-
-            if not provider_model.encrypted_config:
-                return {
-                    'openai_api_base': '',
-                    'openai_api_key': '',
-                    'base_model_name': ''
-                }
-
-            credentials = json.loads(provider_model.encrypted_config)
-            if credentials['openai_api_key']:
-                credentials['openai_api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['openai_api_key']
-                )
-
-                if obfuscated:
-                    credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
-
-            return {
-                'openai_api_base': credentials['openai_api_base'],
-                'openai_api_key': credentials['openai_api_key'],
-                'base_model_name': credentials['base_model_name']
-            }
-        else:
-            if hosted_model_providers.azure_openai:
-                return {
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
+            return (
+                {
                     'openai_api_base': hosted_model_providers.azure_openai.api_base,
                     'openai_api_key': hosted_model_providers.azure_openai.api_key,
-                    'base_model_name': model_name
+                    'base_model_name': model_name,
                 }
-            else:
-                return {
+                if hosted_model_providers.azure_openai
+                else {
                     'openai_api_base': None,
                     'openai_api_key': None,
-                    'base_model_name': None
+                    'base_model_name': None,
                 }
+            )
+        # convert old provider config to provider models
+        self._convert_provider_config_to_model_config()
+
+        provider_model = self._get_provider_model(model_name, model_type)
+
+        if not provider_model.encrypted_config:
+            return {
+                'openai_api_base': '',
+                'openai_api_key': '',
+                'base_model_name': ''
+            }
+
+        credentials = json.loads(provider_model.encrypted_config)
+        if credentials['openai_api_key']:
+            credentials['openai_api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['openai_api_key']
+            )
+
+            if obfuscated:
+                credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
+
+        return {
+            'openai_api_base': credentials['openai_api_base'],
+            'openai_api_key': credentials['openai_api_key'],
+            'base_model_name': credentials['base_model_name']
+        }
 
     @classmethod
     def is_provider_type_system_supported(cls) -> bool:
         if current_app.config['EDITION'] != 'CLOUD':
             return False
 
-        if hosted_model_providers.azure_openai:
-            return True
-
-        return False
+        return bool(hosted_model_providers.azure_openai)
 
     def should_deduct_quota(self):
-        if hosted_model_providers.azure_openai \
-                and hosted_model_providers.azure_openai.quota_limit and hosted_model_providers.azure_openai.quota_limit > -1:
-            return True
-
-        return False
+        return bool(
+            hosted_model_providers.azure_openai
+            and hosted_model_providers.azure_openai.quota_limit
+            and hosted_model_providers.azure_openai.quota_limit > -1
+        )
 
     @classmethod
     def is_provider_credentials_valid_or_raise(cls, credentials: dict):

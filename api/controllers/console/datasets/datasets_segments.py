@@ -66,13 +66,12 @@ class DatasetDocumentSegmentListApi(Resource):
         keyword = args['keyword']
 
         query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.document_id == document_id,
+            DocumentSegment.tenant_id == current_user.current_tenant_id,
         )
 
         if last_id is not None:
-            last_segment = DocumentSegment.query.get(str(last_id))
-            if last_segment:
+            if last_segment := DocumentSegment.query.get(str(last_id)):
                 query = query.filter(
                     DocumentSegment.position > last_segment.position)
             else:
@@ -139,8 +138,8 @@ class DatasetDocumentSegmentApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
@@ -152,12 +151,12 @@ class DatasetDocumentSegmentApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
 
-        document_indexing_cache_key = 'document_{}_indexing'.format(segment.document_id)
+        document_indexing_cache_key = f'document_{segment.document_id}_indexing'
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
 
-        indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
+        indexing_cache_key = f'segment_{segment.id}_indexing'
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Segment is being indexed, please try again later")
@@ -224,8 +223,8 @@ class DatasetDocumentSegmentAddApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
@@ -273,15 +272,15 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-            # check segment
+                # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == segment_id,
+            DocumentSegment.tenant_id == current_user.current_tenant_id,
         ).first()
         if not segment:
             raise NotFound('Segment not found.')
@@ -324,8 +323,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == segment_id,
+            DocumentSegment.tenant_id == current_user.current_tenant_id,
         ).first()
         if not segment:
             raise NotFound('Segment not found.')
@@ -377,15 +376,21 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
                 else:
                     data = {'content': row[0]}
                 result.append(data)
-            if len(result) == 0:
+            if not result:
                 raise ValueError("The CSV file is empty.")
             # async job
             job_id = str(uuid.uuid4())
-            indexing_cache_key = 'segment_batch_import_{}'.format(str(job_id))
+            indexing_cache_key = f'segment_batch_import_{job_id}'
             # send batch add segments task
             redis_client.setnx(indexing_cache_key, 'waiting')
-            batch_create_segment_to_index_task.delay(str(job_id), result, dataset_id, document_id,
-                                                     current_user.current_tenant_id, current_user.id)
+            batch_create_segment_to_index_task.delay(
+                job_id,
+                result,
+                dataset_id,
+                document_id,
+                current_user.current_tenant_id,
+                current_user.id,
+            )
         except Exception as e:
             return {'error': str(e)}, 500
         return {
@@ -398,7 +403,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @account_initialization_required
     def get(self, job_id):
         job_id = str(job_id)
-        indexing_cache_key = 'segment_batch_import_{}'.format(job_id)
+        indexing_cache_key = f'segment_batch_import_{job_id}'
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job is not exist.")

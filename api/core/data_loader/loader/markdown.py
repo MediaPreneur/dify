@@ -67,8 +67,7 @@ class MarkdownLoader(BaseLoader):
         current_text = ""
 
         for line in lines:
-            header_match = re.match(r"^#+\s", line)
-            if header_match:
+            if header_match := re.match(r"^#+\s", line):
                 if current_header is not None:
                     markdown_tups.append((current_header, current_text))
 
@@ -78,30 +77,27 @@ class MarkdownLoader(BaseLoader):
                 current_text += line + "\n"
         markdown_tups.append((current_header, current_text))
 
-        if current_header is not None:
-            # pass linting, assert keys are defined
-            markdown_tups = [
-                (re.sub(r"#", "", cast(str, key)).strip(), re.sub(r"<.*?>", "", value))
+        return (
+            [
+                (
+                    re.sub(r"#", "", cast(str, key)).strip(),
+                    re.sub(r"<.*?>", "", value),
+                )
                 for key, value in markdown_tups
             ]
-        else:
-            markdown_tups = [
-                (key, re.sub("\n", "", value)) for key, value in markdown_tups
-            ]
-
-        return markdown_tups
+            if current_header is not None
+            else [(key, re.sub("\n", "", value)) for key, value in markdown_tups]
+        )
 
     def remove_images(self, content: str) -> str:
         """Get a dictionary of a markdown file from its path."""
         pattern = r"!{1}\[\[(.*)\]\]"
-        content = re.sub(pattern, "", content)
-        return content
+        return re.sub(pattern, "", content)
 
     def remove_hyperlinks(self, content: str) -> str:
         """Get a dictionary of a markdown file from its path."""
         pattern = r"\[(.*?)\]\((.*?)\)"
-        content = re.sub(pattern, r"\1", content)
-        return content
+        return re.sub(pattern, r"\1", content)
 
     def parse_tups(self, filepath: str) -> List[Tuple[Optional[str], str]]:
         """Parse file into tuples."""
@@ -110,18 +106,17 @@ class MarkdownLoader(BaseLoader):
             with open(filepath, "r", encoding=self._encoding) as f:
                 content = f.read()
         except UnicodeDecodeError as e:
-            if self._autodetect_encoding:
-                detected_encodings = detect_file_encodings(filepath)
-                for encoding in detected_encodings:
-                    logger.debug("Trying encoding: ", encoding.encoding)
-                    try:
-                        with open(filepath, encoding=encoding.encoding) as f:
-                            content = f.read()
-                        break
-                    except UnicodeDecodeError:
-                        continue
-            else:
+            if not self._autodetect_encoding:
                 raise RuntimeError(f"Error loading {filepath}") from e
+            detected_encodings = detect_file_encodings(filepath)
+            for encoding in detected_encodings:
+                logger.debug("Trying encoding: ", encoding.encoding)
+                try:
+                    with open(filepath, encoding=encoding.encoding) as f:
+                        content = f.read()
+                    break
+                except UnicodeDecodeError:
+                    continue
         except Exception as e:
             raise RuntimeError(f"Error loading {filepath}") from e
 

@@ -22,9 +22,7 @@ class ModelProviderListApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         provider_service = ProviderService()
-        provider_list = provider_service.get_provider_list(tenant_id)
-
-        return provider_list
+        return provider_service.get_provider_list(tenant_id)
 
 
 class ModelProviderValidateApi(Resource):
@@ -239,20 +237,19 @@ class ModelProviderModelParameterRuleApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                f"Current Text Generation Model is invalid. Please switch to the available model.")
+                "Current Text Generation Model is invalid. Please switch to the available model."
+            )
 
-        rules = {
+        return {
             k: {
                 'enabled': v.enabled,
                 'min': v.min,
                 'max': v.max,
                 'default': v.default,
-                'precision': v.precision
+                'precision': v.precision,
             }
             for k, v in vars(parameter_rules).items()
         }
-
-        return rules
 
 
 class ModelProviderPaymentCheckoutUrlApi(Resource):
@@ -278,12 +275,9 @@ class ModelProviderFreeQuotaSubmitApi(Resource):
     @account_initialization_required
     def post(self, provider_name: str):
         provider_service = ProviderService()
-        result = provider_service.free_quota_submit(
-            tenant_id=current_user.current_tenant_id,
-            provider_name=provider_name
+        return provider_service.free_quota_submit(
+            tenant_id=current_user.current_tenant_id, provider_name=provider_name
         )
-
-        return result
 
 
 class ModelProviderFreeQuotaQualificationVerifyApi(Resource):
@@ -296,13 +290,11 @@ class ModelProviderFreeQuotaQualificationVerifyApi(Resource):
         args = parser.parse_args()
 
         provider_service = ProviderService()
-        result = provider_service.free_quota_qualification_verify(
+        return provider_service.free_quota_qualification_verify(
             tenant_id=current_user.current_tenant_id,
             provider_name=provider_name,
-            token=args['token']
+            token=args['token'],
         )
-
-        return result
 
 
 api.add_resource(ModelProviderListApi, '/workspaces/current/model-providers')

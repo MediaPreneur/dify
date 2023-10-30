@@ -47,14 +47,15 @@ class App(db.Model):
 
     @property
     def site(self):
-        site = db.session.query(Site).filter(Site.app_id == self.id).first()
-        return site
+        return db.session.query(Site).filter(Site.app_id == self.id).first()
 
     @property
     def app_model_config(self):
-        app_model_config = db.session.query(AppModelConfig).filter(
-            AppModelConfig.id == self.app_model_config_id).first()
-        return app_model_config
+        return (
+            db.session.query(AppModelConfig)
+            .filter(AppModelConfig.id == self.app_model_config_id)
+            .first()
+        )
 
     @property
     def api_base_url(self):
@@ -63,8 +64,7 @@ class App(db.Model):
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
-        return tenant
+        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
 class AppModelConfig(db.Model):
@@ -100,8 +100,7 @@ class AppModelConfig(db.Model):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
-        return app
+        return db.session.query(App).filter(App.id == self.app_id).first()
 
     @property
     def model_dict(self) -> dict:
@@ -207,7 +206,7 @@ class AppModelConfig(db.Model):
         return self
 
     def copy(self):
-        new_app_model_config = AppModelConfig(
+        return AppModelConfig(
             id=self.id,
             app_id=self.app_id,
             provider="",
@@ -228,10 +227,8 @@ class AppModelConfig(db.Model):
             prompt_type=self.prompt_type,
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
-            dataset_configs=self.dataset_configs
+            dataset_configs=self.dataset_configs,
         )
-
-        return new_app_model_config
 
 
 class RecommendedApp(db.Model):
@@ -257,8 +254,7 @@ class RecommendedApp(db.Model):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
-        return app
+        return db.session.query(App).filter(App.id == self.app_id).first()
 
 
 class InstalledApp(db.Model):
@@ -281,13 +277,11 @@ class InstalledApp(db.Model):
 
     @property
     def app(self):
-        app = db.session.query(App).filter(App.id == self.app_id).first()
-        return app
+        return db.session.query(App).filter(App.id == self.app_id).first()
 
     @property
     def tenant(self):
-        tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
-        return tenant
+        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
 class Conversation(db.Model):
@@ -378,11 +372,7 @@ class Conversation(db.Model):
         if self.summary:
             return self.summary
         else:
-            first_message = self.first_message
-            if first_message:
-                return first_message.query
-            else:
-                return ''
+            return first_message.query if (first_message := self.first_message) else ''
 
     @property
     def annotated(self):
@@ -435,8 +425,11 @@ class Conversation(db.Model):
     @property
     def from_end_user_session_id(self):
         if self.from_end_user_id:
-            end_user = db.session.query(EndUser).filter(EndUser.id == self.from_end_user_id).first()
-            if end_user:
+            if (
+                end_user := db.session.query(EndUser)
+                .filter(EndUser.id == self.from_end_user_id)
+                .first()
+            ):
                 return end_user.session_id
 
         return None
@@ -484,30 +477,49 @@ class Message(db.Model):
 
     @property
     def user_feedback(self):
-        feedback = db.session.query(MessageFeedback).filter(MessageFeedback.message_id == self.id,
-                                                            MessageFeedback.from_source == 'user').first()
-        return feedback
+        return (
+            db.session.query(MessageFeedback)
+            .filter(
+                MessageFeedback.message_id == self.id,
+                MessageFeedback.from_source == 'user',
+            )
+            .first()
+        )
 
     @property
     def admin_feedback(self):
-        feedback = db.session.query(MessageFeedback).filter(MessageFeedback.message_id == self.id,
-                                                            MessageFeedback.from_source == 'admin').first()
-        return feedback
+        return (
+            db.session.query(MessageFeedback)
+            .filter(
+                MessageFeedback.message_id == self.id,
+                MessageFeedback.from_source == 'admin',
+            )
+            .first()
+        )
 
     @property
     def feedbacks(self):
-        feedbacks = db.session.query(MessageFeedback).filter(MessageFeedback.message_id == self.id).all()
-        return feedbacks
+        return (
+            db.session.query(MessageFeedback)
+            .filter(MessageFeedback.message_id == self.id)
+            .all()
+        )
 
     @property
     def annotation(self):
-        annotation = db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id == self.id).first()
-        return annotation
+        return (
+            db.session.query(MessageAnnotation)
+            .filter(MessageAnnotation.message_id == self.id)
+            .first()
+        )
 
     @property
     def app_model_config(self):
-        conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
-        if conversation:
+        if (
+            conversation := db.session.query(Conversation)
+            .filter(Conversation.id == self.conversation_id)
+            .first()
+        ):
             return db.session.query(AppModelConfig).filter(
                 AppModelConfig.id == conversation.app_model_config_id).first()
 
@@ -551,8 +563,11 @@ class MessageFeedback(db.Model):
 
     @property
     def from_account(self):
-        account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
-        return account
+        return (
+            db.session.query(Account)
+            .filter(Account.id == self.from_account_id)
+            .first()
+        )
 
 
 class MessageAnnotation(db.Model):
@@ -575,8 +590,7 @@ class MessageAnnotation(db.Model):
 
     @property
     def account(self):
-        account = db.session.query(Account).filter(Account.id == self.account_id).first()
-        return account
+        return db.session.query(Account).filter(Account.id == self.account_id).first()
 
 
 class OperationLog(db.Model):

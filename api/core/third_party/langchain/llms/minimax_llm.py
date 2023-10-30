@@ -37,15 +37,14 @@ class _MinimaxEndpointClient(BaseModel):
         if not response.ok:
             raise ValueError(f"HTTP {response.status_code} error: {response.text}")
 
-        if not stream:
-            if response.json()["base_resp"]["status_code"] > 0:
-                raise ValueError(
-                    f"API {response.json()['base_resp']['status_code']}"
-                    f" error: {response.json()['base_resp']['status_msg']}"
-                )
-            return response.json()
-        else:
+        if stream:
             return response
+        if response.json()["base_resp"]["status_code"] > 0:
+            raise ValueError(
+                f"API {response.json()['base_resp']['status_code']}"
+                f" error: {response.json()['base_resp']['status_msg']}"
+            )
+        return response.json()
 
 
 class MinimaxChatLLM(BaseChatModel):
@@ -270,7 +269,7 @@ class MinimaxChatLLM(BaseChatModel):
         Returns:
             The sum of the number of tokens across the messages.
         """
-        return sum([self.get_num_tokens(m.content) for m in messages])
+        return sum(self.get_num_tokens(m.content) for m in messages)
 
     def _combine_llm_outputs(self, llm_outputs: List[Optional[dict]]) -> dict:
         token_usage: dict = {}

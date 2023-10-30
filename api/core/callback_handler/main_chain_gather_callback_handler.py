@@ -46,8 +46,7 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Print out that we are entering a chain."""
         if not self._current_chain_result:
-            chain_type = serialized['id'][-1]
-            if chain_type:
+            if chain_type := serialized['id'][-1]:
                 self._current_chain_result = ChainResult(
                     type=chain_type,
                     prompt=inputs,

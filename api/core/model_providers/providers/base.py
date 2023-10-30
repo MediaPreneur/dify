@@ -231,18 +231,15 @@ class BaseModelProvider(BaseModel, ABC):
         if not self.should_deduct_quota():
             return
 
-        if 'system_config' not in rules:
-            quota_unit = ProviderQuotaUnit.TIMES.value
-        elif 'quota_unit' not in rules['system_config']:
+        if (
+            'system_config' not in rules
+            or 'quota_unit' not in rules['system_config']
+        ):
             quota_unit = ProviderQuotaUnit.TIMES.value
         else:
             quota_unit = rules['system_config']['quota_unit']
 
-        if quota_unit == ProviderQuotaUnit.TOKENS.value:
-            used_quota = used_tokens
-        else:
-            used_quota = 1
-
+        used_quota = used_tokens if quota_unit == ProviderQuotaUnit.TOKENS.value else 1
         db.session.query(Provider).filter(
             Provider.tenant_id == self.provider.tenant_id,
             Provider.provider_name == self.provider.provider_name,
@@ -283,19 +280,21 @@ class BaseModelProvider(BaseModel, ABC):
         :param model_type:
         :return:
         """
-        provider_model = db.session.query(ProviderModel).filter(
-            ProviderModel.tenant_id == self.provider.tenant_id,
-            ProviderModel.provider_name == self.provider.provider_name,
-            ProviderModel.model_name == model_name,
-            ProviderModel.model_type == model_type.value,
-            ProviderModel.is_valid == True
-        ).first()
-
-        if not provider_model:
+        if (
+            provider_model := db.session.query(ProviderModel)
+            .filter(
+                ProviderModel.tenant_id == self.provider.tenant_id,
+                ProviderModel.provider_name == self.provider.provider_name,
+                ProviderModel.model_name == model_name,
+                ProviderModel.model_type == model_type.value,
+                ProviderModel.is_valid == True,
+            )
+            .first()
+        ):
+            return provider_model
+        else:
             raise LLMBadRequestError(f"The model {model_name} does not exist. "
                                      f"Please check the configuration.")
-
-        return provider_model
 
 
 class CredentialsValidateFailedError(Exception):

@@ -63,18 +63,15 @@ class NotionOAuth(OAuthDataSource):
             'pages': pages,
             'total': len(pages)
         }
-        # save data source binding
-        data_source_binding = DataSourceBinding.query.filter(
+        if data_source_binding := DataSourceBinding.query.filter(
             db.and_(
                 DataSourceBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceBinding.provider == 'notion',
-                DataSourceBinding.access_token == access_token
+                DataSourceBinding.access_token == access_token,
             )
-        ).first()
-        if data_source_binding:
+        ).first():
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            db.session.commit()
         else:
             new_data_source_binding = DataSourceBinding(
                 tenant_id=current_user.current_tenant_id,
@@ -83,7 +80,7 @@ class NotionOAuth(OAuthDataSource):
                 provider='notion'
             )
             db.session.add(new_data_source_binding)
-            db.session.commit()
+        db.session.commit()
 
     def save_internal_access_token(self, access_token: str):
         workspace_name = self.notion_workspace_name(access_token)
@@ -98,18 +95,15 @@ class NotionOAuth(OAuthDataSource):
             'pages': pages,
             'total': len(pages)
         }
-        # save data source binding
-        data_source_binding = DataSourceBinding.query.filter(
+        if data_source_binding := DataSourceBinding.query.filter(
             db.and_(
                 DataSourceBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceBinding.provider == 'notion',
-                DataSourceBinding.access_token == access_token
+                DataSourceBinding.access_token == access_token,
             )
-        ).first()
-        if data_source_binding:
+        ).first():
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            db.session.commit()
         else:
             new_data_source_binding = DataSourceBinding(
                 tenant_id=current_user.current_tenant_id,
@@ -118,19 +112,17 @@ class NotionOAuth(OAuthDataSource):
                 provider='notion'
             )
             db.session.add(new_data_source_binding)
-            db.session.commit()
+        db.session.commit()
 
     def sync_data_source(self, binding_id: str):
-        # save data source binding
-        data_source_binding = DataSourceBinding.query.filter(
+        if data_source_binding := DataSourceBinding.query.filter(
             db.and_(
                 DataSourceBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceBinding.provider == 'notion',
                 DataSourceBinding.id == binding_id,
-                DataSourceBinding.disabled == False
+                DataSourceBinding.disabled == False,
             )
-        ).first()
-        if data_source_binding:
+        ).first():
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)
             source_info = data_source_binding.source_info
@@ -171,10 +163,9 @@ class NotionOAuth(OAuthDataSource):
                     page_name = 'Untitled'
             else:
                 page_name = 'Untitled'
-            page_icon = page_result['icon']
-            if page_icon:
+            if page_icon := page_result['icon']:
                 icon_type = page_icon['type']
-                if icon_type == 'external' or icon_type == 'file':
+                if icon_type in ['external', 'file']:
                     url = page_icon[icon_type]['url']
                     icon = {
                         'type': 'url',
@@ -203,17 +194,16 @@ class NotionOAuth(OAuthDataSource):
                 'type': 'page'
             }
             pages.append(page)
-            # get database detail
+                # get database detail
         for database_result in database_results:
             page_id = database_result['id']
             if len(database_result['title']) > 0:
                 page_name = database_result['title'][0]['plain_text']
             else:
                 page_name = 'Untitled'
-            page_icon = database_result['icon']
-            if page_icon:
+            if page_icon := database_result['icon']:
                 icon_type = page_icon['type']
-                if icon_type == 'external' or icon_type == 'file':
+                if icon_type in ['external', 'file']:
                     url = page_icon[icon_type]['url']
                     icon = {
                         'type': 'url',
@@ -258,11 +248,7 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        if 'results' in response_json:
-            results = response_json['results']
-        else:
-            results = []
-        return results
+        return response_json['results'] if 'results' in response_json else []
 
     def notion_block_parent_page_id(self, access_token: str, block_id: str):
         headers = {
@@ -305,8 +291,4 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        if 'results' in response_json:
-            results = response_json['results']
-        else:
-            results = []
-        return results
+        return response_json['results'] if 'results' in response_json else []

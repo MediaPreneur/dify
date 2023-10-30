@@ -43,9 +43,11 @@ class Dataset(db.Model):
 
     @property
     def dataset_keyword_table(self):
-        dataset_keyword_table = db.session.query(DatasetKeywordTable).filter(
-            DatasetKeywordTable.dataset_id == self.id).first()
-        if dataset_keyword_table:
+        if (
+            dataset_keyword_table := db.session.query(DatasetKeywordTable)
+            .filter(DatasetKeywordTable.dataset_id == self.id)
+            .first()
+        ):
             return dataset_keyword_table
 
         return None
@@ -230,9 +232,9 @@ class Document(db.Model):
             status = 'error'
         elif self.indexing_status == 'completed' and not self.archived and self.enabled:
             status = 'available'
-        elif self.indexing_status == 'completed' and not self.archived and not self.enabled:
+        elif self.indexing_status == 'completed' and not self.archived:
             status = 'disabled'
-        elif self.indexing_status == 'completed' and self.archived:
+        elif self.indexing_status == 'completed':
             status = 'archived'
         return status
 
@@ -252,10 +254,13 @@ class Document(db.Model):
         if self.data_source_info:
             if self.data_source_type == 'upload_file':
                 data_source_info_dict = json.loads(self.data_source_info)
-                file_detail = db.session.query(UploadFile). \
-                    filter(UploadFile.id == data_source_info_dict['upload_file_id']). \
-                    one_or_none()
-                if file_detail:
+                if (
+                    file_detail := db.session.query(UploadFile)
+                    .filter(
+                        UploadFile.id == data_source_info_dict['upload_file_id']
+                    )
+                    .one_or_none()
+                ):
                     return {
                         'upload_file': {
                             'id': file_detail.id,

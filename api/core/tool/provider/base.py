@@ -54,10 +54,7 @@ class BaseToolProvider(ABC):
     def decrypt_token(self, token: str, obfuscated: bool = False) -> str:
         token = rsa.decrypt(base64.b64decode(token), self.tenant_id)
 
-        if obfuscated:
-            return self._obfuscated_token(token)
-
-        return token
+        return self._obfuscated_token(token) if obfuscated else token
 
     def _obfuscated_token(self, token: str) -> str:
         return token[:6] + '*' * (len(token) - 8) + token[-2:]

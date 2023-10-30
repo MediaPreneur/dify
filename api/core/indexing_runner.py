@@ -54,8 +54,8 @@ class IndexingRunner:
 
                 # get the process rule
                 processing_rule = db.session.query(DatasetProcessRule). \
-                    filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
-                    first()
+                        filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
+                        first()
 
                 # get splitter
                 splitter = self._get_splitter(processing_rule)
@@ -74,14 +74,16 @@ class IndexingRunner:
                     documents=documents
                 )
             except DocumentIsPausedException:
-                raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+                raise DocumentIsPausedException(
+                    f'Document paused, document id: {dataset_document.id}'
+                )
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = 'error'
                 dataset_document.error = str(e.description)
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
             except ObjectDeletedError:
-                logging.warning('Document deleted, document id: {}'.format(dataset_document.id))
+                logging.warning(f'Document deleted, document id: {dataset_document.id}')
             except Exception as e:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = 'error'
@@ -130,8 +132,8 @@ class IndexingRunner:
 
             # get the process rule
             processing_rule = db.session.query(DatasetProcessRule). \
-                filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
-                first()
+                    filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
+                    first()
 
             # get splitter
             splitter = self._get_splitter(processing_rule)
@@ -152,7 +154,9 @@ class IndexingRunner:
                 documents=documents
             )
         except DocumentIsPausedException:
-            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+            raise DocumentIsPausedException(
+                f'Document paused, document id: {dataset_document.id}'
+            )
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
@@ -206,7 +210,9 @@ class IndexingRunner:
                 documents=documents
             )
         except DocumentIsPausedException:
-            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+            raise DocumentIsPausedException(
+                f'Document paused, document id: {dataset_document.id}'
+            )
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
@@ -238,11 +244,10 @@ class IndexingRunner:
                     model_provider_name=dataset.embedding_model_provider,
                     model_name=dataset.embedding_model
                 )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
-                )
+        elif indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
         tokens = 0
         preview_texts = []
         total_segments = 0
@@ -277,7 +282,7 @@ class IndexingRunner:
             text_generation_model = ModelFactory.get_text_generation_model(
                 tenant_id=tenant_id
             )
-            if len(preview_texts) > 0:
+            if preview_texts:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
                                                              doc_language)
@@ -318,11 +323,10 @@ class IndexingRunner:
                     model_provider_name=dataset.embedding_model_provider,
                     model_name=dataset.embedding_model
                 )
-        else:
-            if indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=tenant_id
-                )
+        elif indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
         # load data from notion
         tokens = 0
         preview_texts = []
@@ -374,7 +378,7 @@ class IndexingRunner:
             text_generation_model = ModelFactory.get_text_generation_model(
                 tenant_id=tenant_id
             )
-            if len(preview_texts) > 0:
+            if preview_texts:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
                                                              doc_language)
@@ -407,11 +411,11 @@ class IndexingRunner:
             if not data_source_info or 'upload_file_id' not in data_source_info:
                 raise ValueError("no upload file found")
 
-            file_detail = db.session.query(UploadFile). \
-                filter(UploadFile.id == data_source_info['upload_file_id']). \
-                one_or_none()
-
-            if file_detail:
+            if (
+                file_detail := db.session.query(UploadFile)
+                .filter(UploadFile.id == data_source_info['upload_file_id'])
+                .one_or_none()
+            ):
                 text_docs = FileExtractor.load(file_detail)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
@@ -422,9 +426,11 @@ class IndexingRunner:
             document_id=dataset_document.id,
             after_indexing_status="splitting",
             extra_update_params={
-                DatasetDocument.word_count: sum([len(text_doc.page_content) for text_doc in text_docs]),
-                DatasetDocument.parsing_completed_at: datetime.datetime.utcnow()
-            }
+                DatasetDocument.word_count: sum(
+                    len(text_doc.page_content) for text_doc in text_docs
+                ),
+                DatasetDocument.parsing_completed_at: datetime.datetime.utcnow(),
+            },
         )
 
         # replace doc id to document model id
@@ -447,32 +453,32 @@ class IndexingRunner:
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule.mode == "custom":
-            # The user-defined segmentation rule
-            rules = json.loads(processing_rule.rules)
-            segmentation = rules["segmentation"]
-            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > 1000:
-                raise ValueError("Custom segment length should be between 50 and 1000.")
-
-            separator = segmentation["separator"]
-            if separator:
-                separator = separator.replace('\\n', '\n')
-
-            character_splitter = FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=segmentation["max_tokens"],
-                chunk_overlap=0,
-                fixed_separator=separator,
-                separators=["\n\n", "。", ".", " ", ""]
-            )
-        else:
+        if processing_rule.mode != "custom":
             # Automatic segmentation
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
+            return RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation'][
+                    'max_tokens'
+                ],
                 chunk_overlap=0,
-                separators=["\n\n", "。", ".", " ", ""]
+                separators=["\n\n", "。", ".", " ", ""],
             )
 
-        return character_splitter
+        # The user-defined segmentation rule
+        rules = json.loads(processing_rule.rules)
+        segmentation = rules["segmentation"]
+        if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > 1000:
+            raise ValueError("Custom segment length should be between 50 and 1000.")
+
+        separator = segmentation["separator"]
+        if separator:
+            separator = separator.replace('\\n', '\n')
+
+        return FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            chunk_size=segmentation["max_tokens"],
+            chunk_overlap=0,
+            fixed_separator=separator,
+            separators=["\n\n", "。", ".", " ", ""],
+        )
 
     def _step_split(self, text_docs: List[Document], splitter: TextSplitter,
                     dataset: Dataset, dataset_document: DatasetDocument, processing_rule: DatasetProcessRule) \
@@ -725,9 +731,8 @@ class IndexingRunner:
         )
 
     def _check_document_paused_status(self, document_id: str):
-        indexing_cache_key = 'document_{}_is_paused'.format(document_id)
-        result = redis_client.get(indexing_cache_key)
-        if result:
+        indexing_cache_key = f'document_{document_id}_is_paused'
+        if result := redis_client.get(indexing_cache_key):
             raise DocumentIsPausedException()
 
     def _update_document_index_status(self, document_id: str, after_indexing_status: str,
@@ -775,14 +780,10 @@ class IndexingRunner:
                 }
             )
             documents.append(document)
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'high_quality'):
             index.add_texts(documents, duplicate_check=True)
 
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'economy'):
             index.add_texts(documents)
 
 

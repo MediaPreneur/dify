@@ -41,13 +41,12 @@ class SerpAPIToolProvider(BaseToolProvider):
 
         :return:
         """
-        credentials = self.get_credentials()
-        if not credentials:
+        if credentials := self.get_credentials():
+            return {
+                'serpapi_api_key': credentials.get('api_key')
+            }
+        else:
             return None
-
-        return {
-            'serpapi_api_key': credentials.get('api_key')
-        }
 
     def credentials_validate(self, credentials: dict):
         """
@@ -64,7 +63,7 @@ class SerpAPIToolProvider(BaseToolProvider):
         try:
             OptimizedSerpAPIWrapper(serpapi_api_key=api_key).run(query='test')
         except Exception as e:
-            raise ToolValidateFailedError("SerpAPI api_key is invalid. {}".format(e))
+            raise ToolValidateFailedError(f"SerpAPI api_key is invalid. {e}")
 
     def encrypt_credentials(self, credentials: dict) -> Optional[dict]:
         """

@@ -121,8 +121,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             }
         )
 
-        agent_decision = _parse_ai_message(ai_message)
-        return agent_decision
+        return _parse_ai_message(ai_message)
 
     async def aplan(
             self,

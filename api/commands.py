@@ -45,13 +45,17 @@ def reset_password(email, new_password, password_confirm):
         filter(Account.email == email). \
         one_or_none()
     if not account:
-        click.echo(click.style('sorry. the account: [{}] not exist .'.format(email), fg='red'))
+        click.echo(click.style(f'sorry. the account: [{email}] not exist .', fg='red'))
         return
     try:
         valid_password(new_password)
     except:
         click.echo(
-            click.style('sorry. The passwords must match {} '.format(password_pattern), fg='red'))
+            click.style(
+                f'sorry. The passwords must match {password_pattern} ',
+                fg='red',
+            )
+        )
         return
 
     # generate password salt
@@ -79,13 +83,12 @@ def reset_email(email, new_email, email_confirm):
         filter(Account.email == email). \
         one_or_none()
     if not account:
-        click.echo(click.style('sorry. the account: [{}] not exist .'.format(email), fg='red'))
+        click.echo(click.style(f'sorry. the account: [{email}] not exist .', fg='red'))
         return
     try:
         email_validate(new_email)
     except:
-        click.echo(
-            click.style('sorry. {} is not a valid email. '.format(email), fg='red'))
+        click.echo(click.style(f'sorry. {email} is not a valid email. ', fg='red'))
         return
 
     account.email = new_email
@@ -115,8 +118,12 @@ def reset_encrypt_key_pair():
     db.session.query(ProviderModel).delete()
     db.session.commit()
 
-    click.echo(click.style('Congratulations! '
-                           'the asymmetric key pair of workspace {} has been reset.'.format(tenant.id), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! the asymmetric key pair of workspace {tenant.id} has been reset.',
+            fg='green',
+        )
+    )
 
 
 @click.command('generate-invitation-codes', help='Generate invitation codes.')
@@ -133,10 +140,10 @@ def generate_invitation_codes(batch, count):
 
     count = int(count)
 
-    click.echo('Start generate {} invitation codes for batch {}.'.format(count, batch))
+    click.echo(f'Start generate {count} invitation codes for batch {batch}.')
 
     codes = ''
-    for i in range(count):
+    for _ in range(count):
         code = generate_invitation_code()
         invitation_code = InvitationCode(
             code=code,
@@ -148,15 +155,17 @@ def generate_invitation_codes(batch, count):
         codes += code + "\n"
     db.session.commit()
 
-    filename = 'storage/invitation-codes-{}.txt'.format(batch)
+    filename = f'storage/invitation-codes-{batch}.txt'
 
     with open(filename, 'w') as f:
         f.write(codes)
 
-    click.echo(click.style(
-        'Congratulations! Generated {} invitation codes for batch {} and saved to the file \'{}\''.format(count, batch,
-                                                                                                          filename),
-        fg='green'))
+    click.echo(
+        click.style(
+            f"Congratulations! Generated {count} invitation codes for batch {batch} and saved to the file \'{filename}\'",
+            fg='green',
+        )
+    )
 
 
 def generate_invitation_code():
@@ -169,11 +178,7 @@ def generate_invitation_code():
 
 def generate_upper_string():
     letters_digits = string.ascii_uppercase + string.digits
-    result = ""
-    for i in range(8):
-        result += random.choice(letters_digits)
-
-    return result
+    return "".join(random.choice(letters_digits) for _ in range(8))
 
 
 @click.command('recreate-all-dataset-indexes', help='Recreate all dataset indexes.')
@@ -192,7 +197,7 @@ def recreate_all_dataset_indexes():
         page += 1
         for dataset in datasets:
             try:
-                click.echo('Recreating dataset index: {}'.format(dataset.id))
+                click.echo(f'Recreating dataset index: {dataset.id}')
                 index = IndexBuilder.get_index(dataset, 'high_quality')
                 if index and index._is_origin():
                     index.recreate_dataset(dataset)
@@ -201,10 +206,19 @@ def recreate_all_dataset_indexes():
                     click.echo('passed.')
             except Exception as e:
                 click.echo(
-                    click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                    click.style(
+                        f'Recreate dataset index error: {e.__class__.__name__} {str(e)}',
+                        fg='red',
+                    )
+                )
                 continue
 
-    click.echo(click.style('Congratulations! Recreate {} dataset indexes.'.format(recreate_count), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! Recreate {recreate_count} dataset indexes.',
+            fg='green',
+        )
+    )
 
 
 @click.command('clean-unused-dataset-indexes', help='Clean unused dataset indexes.')
@@ -244,10 +258,7 @@ def clean_unused_dataset_indexes():
                             if dataset.collection_binding_id:
                                 vector_index.delete_by_group_id(dataset.id)
                             else:
-                                if dataset.collection_binding_id:
-                                    vector_index.delete_by_group_id(dataset.id)
-                                else:
-                                    vector_index.delete()
+                                vector_index.delete()
                         kw_index.delete()
                         # update document
                         update_params = {
@@ -256,14 +267,26 @@ def clean_unused_dataset_indexes():
 
                         Document.query.filter_by(dataset_id=dataset.id).update(update_params)
                         db.session.commit()
-                        click.echo(click.style('Cleaned unused dataset {} from db success!'.format(dataset.id),
-                                               fg='green'))
+                        click.echo(
+                            click.style(
+                                f'Cleaned unused dataset {dataset.id} from db success!',
+                                fg='green',
+                            )
+                        )
                     except Exception as e:
                         click.echo(
-                            click.style('clean dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                                        fg='red'))
+                            click.style(
+                                f'clean dataset index error: {e.__class__.__name__} {str(e)}',
+                                fg='red',
+                            )
+                        )
     end_at = time.perf_counter()
-    click.echo(click.style('Cleaned unused dataset from db success latency: {}'.format(end_at - start_at), fg='green'))
+    click.echo(
+        click.style(
+            f'Cleaned unused dataset from db success latency: {end_at - start_at}',
+            fg='green',
+        )
+    )
 
 
 @click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
@@ -292,8 +315,9 @@ def sync_anthropic_hosted_providers():
         page += 1
         for provider in providers:
             try:
-                click.echo('Syncing tenant anthropic hosted provider: {}, origin: limit {}, used {}'
-                           .format(provider.tenant_id, provider.quota_limit, provider.quota_used))
+                click.echo(
+                    f'Syncing tenant anthropic hosted provider: {provider.tenant_id}, origin: limit {provider.quota_limit}, used {provider.quota_used}'
+                )
                 original_quota_limit = provider.quota_limit
                 division = math.ceil(new_quota_limit / 1000)
 
@@ -304,12 +328,20 @@ def sync_anthropic_hosted_providers():
 
                 count += 1
             except Exception as e:
-                click.echo(click.style(
-                    'Sync tenant anthropic hosted provider error: {} {}'.format(e.__class__.__name__, str(e)),
-                    fg='red'))
+                click.echo(
+                    click.style(
+                        f'Sync tenant anthropic hosted provider error: {e.__class__.__name__} {str(e)}',
+                        fg='red',
+                    )
+                )
                 continue
 
-    click.echo(click.style('Congratulations! Synced {} anthropic hosted providers.'.format(count), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! Synced {count} anthropic hosted providers.',
+            fg='green',
+        )
+    )
 
 
 @click.command('create-qdrant-indexes', help='Create qdrant indexes.')
@@ -330,7 +362,7 @@ def create_qdrant_indexes():
             if dataset.index_struct_dict:
                 if dataset.index_struct_dict['type'] != 'qdrant':
                     try:
-                        click.echo('Create dataset qdrant index: {}'.format(dataset.id))
+                        click.echo(f'Create dataset qdrant index: {dataset.id}')
                         try:
                             embedding_model = ModelFactory.get_embedding_model(
                                 tenant_id=dataset.tenant_id,
@@ -360,16 +392,17 @@ def create_qdrant_indexes():
 
                         from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
 
-                        index = QdrantVectorIndex(
+                        if index := QdrantVectorIndex(
                             dataset=dataset,
                             config=QdrantConfig(
                                 endpoint=current_app.config.get('QDRANT_URL'),
-                                api_key=current_app.config.get('QDRANT_API_KEY'),
-                                root_path=current_app.root_path
+                                api_key=current_app.config.get(
+                                    'QDRANT_API_KEY'
+                                ),
+                                root_path=current_app.root_path,
                             ),
-                            embeddings=embeddings
-                        )
-                        if index:
+                            embeddings=embeddings,
+                        ):
                             index.create_qdrant_dataset(dataset)
                             index_struct = {
                                 "type": 'qdrant',
@@ -383,11 +416,19 @@ def create_qdrant_indexes():
                             click.echo('passed.')
                     except Exception as e:
                         click.echo(
-                            click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                                        fg='red'))
+                            click.style(
+                                f'Create dataset index error: {e.__class__.__name__} {str(e)}',
+                                fg='red',
+                            )
+                        )
                         continue
 
-    click.echo(click.style('Congratulations! Create {} dataset indexes.'.format(create_count), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! Create {create_count} dataset indexes.',
+            fg='green',
+        )
+    )
 
 
 @click.command('update-qdrant-indexes', help='Update qdrant indexes.')
@@ -408,7 +449,7 @@ def update_qdrant_indexes():
             if dataset.index_struct_dict:
                 if dataset.index_struct_dict['type'] != 'qdrant':
                     try:
-                        click.echo('Update dataset qdrant index: {}'.format(dataset.id))
+                        click.echo(f'Update dataset qdrant index: {dataset.id}')
                         try:
                             embedding_model = ModelFactory.get_embedding_model(
                                 tenant_id=dataset.tenant_id,
@@ -431,27 +472,36 @@ def update_qdrant_indexes():
 
                         from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
 
-                        index = QdrantVectorIndex(
+                        if index := QdrantVectorIndex(
                             dataset=dataset,
                             config=QdrantConfig(
                                 endpoint=current_app.config.get('QDRANT_URL'),
-                                api_key=current_app.config.get('QDRANT_API_KEY'),
-                                root_path=current_app.root_path
+                                api_key=current_app.config.get(
+                                    'QDRANT_API_KEY'
+                                ),
+                                root_path=current_app.root_path,
                             ),
-                            embeddings=embeddings
-                        )
-                        if index:
+                            embeddings=embeddings,
+                        ):
                             index.update_qdrant_dataset(dataset)
                             create_count += 1
                         else:
                             click.echo('passed.')
                     except Exception as e:
                         click.echo(
-                            click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                                        fg='red'))
+                            click.style(
+                                f'Create dataset index error: {e.__class__.__name__} {str(e)}',
+                                fg='red',
+                            )
+                        )
                         continue
 
-    click.echo(click.style('Congratulations! Update {} dataset indexes.'.format(create_count), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! Update {create_count} dataset indexes.',
+            fg='green',
+        )
+    )
 
 
 @click.command('normalization-collections', help='restore all collections in one')
@@ -481,13 +531,18 @@ def normalization_collections():
             for thread in threads:
                 thread.join()
 
-    click.echo(click.style('Congratulations! restore {} dataset indexes.'.format(len(normalization_count)), fg='green'))
+    click.echo(
+        click.style(
+            f'Congratulations! restore {len(normalization_count)} dataset indexes.',
+            fg='green',
+        )
+    )
 
 
 def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count: list):
     with flask_app.app_context():
         try:
-            click.echo('restore dataset index: {}'.format(dataset.id))
+            click.echo(f'restore dataset index: {dataset.id}')
             try:
                 embedding_model = ModelFactory.get_embedding_model(
                     tenant_id=dataset.tenant_id,
@@ -524,16 +579,15 @@ def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count:
 
             from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
 
-            index = QdrantVectorIndex(
+            if index := QdrantVectorIndex(
                 dataset=dataset,
                 config=QdrantConfig(
                     endpoint=current_app.config.get('QDRANT_URL'),
                     api_key=current_app.config.get('QDRANT_API_KEY'),
-                    root_path=current_app.root_path
+                    root_path=current_app.root_path,
                 ),
-                embeddings=embeddings
-            )
-            if index:
+                embeddings=embeddings,
+            ):
                 # index.delete_by_group_id(dataset.id)
                 index.restore_dataset_in_one(dataset, dataset_collection_binding)
             else:
@@ -541,8 +595,11 @@ def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count:
             normalization_count.append(1)
         except Exception as e:
             click.echo(
-                click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                            fg='red'))
+                click.style(
+                    f'Create dataset index error: {e.__class__.__name__} {str(e)}',
+                    fg='red',
+                )
+            )
 
 
 @click.command('update_app_model_configs', help='Migrate data to support paragraph variable.')
@@ -609,9 +666,9 @@ def update_app_model_configs(batch_size):
 
                     if data.pre_prompt is None:
                         data.pre_prompt = pre_prompt_template
+                    elif pre_prompt_template in data.pre_prompt:
+                        continue
                     else:
-                        if pre_prompt_template in data.pre_prompt:
-                            continue
                         data.pre_prompt += pre_prompt_template
 
                     app_data = db.session.query(App) \
@@ -634,7 +691,7 @@ def update_app_model_configs(batch_size):
                         raw_json_data.append(user_input_form_template[account_data.interface_language][0])
                         data.user_input_form = json.dumps(raw_json_data)
 
-                    # click.secho(f"Updated data {data.id}, pre_prompt: {data.pre_prompt}, user_input_form: {data.user_input_form}", fg='green')
+                                    # click.secho(f"Updated data {data.id}, pre_prompt: {data.pre_prompt}, user_input_form: {data.user_input_form}", fg='green')
 
                 db.session.commit()
 
@@ -653,18 +710,20 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
 
     click.secho("Starting...", fg='green')
 
-    total_records = db.session.query(AppModelConfig) \
-        .join(App, App.app_model_config_id == AppModelConfig.id) \
-        .filter(App.mode == 'completion') \
-        .filter(AppModelConfig.dataset_query_variable == None) \
+    total_records = (
+        db.session.query(AppModelConfig)
+        .join(App, App.app_model_config_id == AppModelConfig.id)
+        .filter(App.mode == 'completion')
+        .filter(AppModelConfig.dataset_query_variable is None)
         .count()
-    
+    )
+
     if total_records == 0:
         click.secho("No data to migrate.", fg='green')
         return
 
     num_batches = (total_records + batch_size - 1) // batch_size
-    
+
     with tqdm(total=total_records, desc="Migrating Data") as pbar:
         for i in range(num_batches):
             offset = i * batch_size
@@ -672,12 +731,16 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
 
             click.secho(f"Fetching batch {i + 1}/{num_batches} from source database...", fg='green')
 
-            data_batch = db.session.query(AppModelConfig) \
-                .join(App, App.app_model_config_id == AppModelConfig.id) \
-                .filter(App.mode == 'completion') \
-                .filter(AppModelConfig.dataset_query_variable == None) \
-                .order_by(App.created_at) \
-                .offset(offset).limit(limit).all()
+            data_batch = (
+                db.session.query(AppModelConfig)
+                .join(App, App.app_model_config_id == AppModelConfig.id)
+                .filter(App.mode == 'completion')
+                .filter(AppModelConfig.dataset_query_variable is None)
+                .order_by(App.created_at)
+                .offset(offset)
+                .limit(limit)
+                .all()
+            )
 
             if not data_batch:
                 click.secho("No more data to migrate.", fg='green')
@@ -700,7 +763,7 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
                             and paragraph.get('variable') == 'query':
                                 data.dataset_query_variable = 'query'
                                 break
-                        
+
                         if paragraph \
                             and paragraph.get('variable') == 'default_input':
                                 data.dataset_query_variable = 'default_input'
@@ -712,7 +775,7 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
                 click.secho(f"Error while migrating data: {e}, app_id: {data.app_id}, app_model_config_id: {data.id}",
                             fg='red')
                 continue
-            
+
             click.secho(f"Successfully migrated batch {i + 1}/{num_batches}.", fg='green')
 
             pbar.update(len(data_batch))

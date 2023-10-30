@@ -136,8 +136,8 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             args_schema = re.sub("}", "}}}}", re.sub("{", "{{{{", str(tool.args)))
             tool_strings.append(f"{tool.name}: {tool.description}, args: {args_schema}")
         formatted_tools = "\n".join(tool_strings)
-        unique_tool_names = set(tool.name for tool in tools)
-        tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)
+        unique_tool_names = {tool.name for tool in tools}
+        tool_names = ", ".join(f'"{name}"' for name in unique_tool_names)
         format_instructions = format_instructions.format(tool_names=tool_names)
         template = "\n\n".join([prefix, formatted_tools, format_instructions, suffix])
         if input_variables is None:
@@ -192,18 +192,14 @@ Thought: {agent_scratchpad}
 
         if not isinstance(agent_scratchpad, str):
             raise ValueError("agent_scratchpad should be of type string.")
-        if agent_scratchpad:
-            llm_chain = cast(LLMChain, self.llm_chain)
-            if llm_chain.model_instance.model_mode == ModelMode.CHAT:
-                return (
-                    f"This was your previous work "
-                    f"(but I haven't seen any of it! I only see what "
-                    f"you return as final answer):\n{agent_scratchpad}"
-                )
-            else:
-                return agent_scratchpad
-        else:
+        if not agent_scratchpad:
             return agent_scratchpad
+        llm_chain = cast(LLMChain, self.llm_chain)
+        return (
+            f"This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n{agent_scratchpad}"
+            if llm_chain.model_instance.model_mode == ModelMode.CHAT
+            else agent_scratchpad
+        )
 
     @classmethod
     def from_llm_and_tools(
@@ -249,7 +245,7 @@ Thought: {agent_scratchpad}
         return cls(
             llm_chain=llm_chain,
             allowed_tools=tool_names,
-            output_parser=_output_parser,
+            _output_parser=_output_parser,
             dataset_tools=tools,
-            **kwargs,
+            **kwargs
         )

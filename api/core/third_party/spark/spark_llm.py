@@ -40,9 +40,9 @@ class SparkLLMClient:
         now = datetime.now()
         date = format_date_time(mktime(now.timetuple()))
 
-        signature_origin = "host: " + host + "\n"
-        signature_origin += "date: " + date + "\n"
-        signature_origin += "GET " + path + " HTTP/1.1"
+        signature_origin = f"host: {host}" + "\n"
+        signature_origin += f"date: {date}" + "\n"
+        signature_origin += f"GET {path} HTTP/1.1"
 
         # encrypt using hmac-sha256
         signature_sha = hmac.new(api_secret.encode('utf-8'), signature_origin.encode('utf-8'),
@@ -59,9 +59,7 @@ class SparkLLMClient:
             "date": date,
             "host": host
         }
-        # generate url
-        url = api_base + '?' + urlencode(v)
-        return url
+        return f'{api_base}?{urlencode(v)}'
 
     def run(self, messages: list, user_id: str,
             model_kwargs: Optional[dict] = None, streaming: bool = False):

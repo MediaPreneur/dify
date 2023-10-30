@@ -12,7 +12,7 @@ from flask_restful import fields
 
 
 def run(script):
-    return subprocess.getstatusoutput('source /root/.bashrc && ' + script)
+    return subprocess.getstatusoutput(f'source /root/.bashrc && {script}')
 
 
 class TimestampField(fields.Raw):
@@ -134,11 +134,7 @@ def timezone(timezone_string):
 
 def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
-    result = ""
-    for i in range(n):
-        result += random.choice(letters_digits)
-
-    return result
+    return "".join(random.choice(letters_digits) for _ in range(n))
 
 
 def get_remote_ip(request):
@@ -151,5 +147,5 @@ def get_remote_ip(request):
 
 
 def generate_text_hash(text: str) -> str:
-    hash_text = str(text) + 'None'
+    hash_text = f'{text}None'
     return sha256(hash_text.encode()).hexdigest()

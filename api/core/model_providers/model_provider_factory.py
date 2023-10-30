@@ -128,31 +128,31 @@ class ModelProviderFactory:
         :param preferred_model_provider:
         :return:
         """
-        if not preferred_model_provider:
-            model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
-            support_provider_types = model_provider_rules['support_provider_types']
-
-            if ProviderType.CUSTOM.value in support_provider_types:
-                custom_provider = db.session.query(Provider) \
-                    .filter(
-                        Provider.tenant_id == tenant_id,
-                        Provider.provider_name == model_provider_name,
-                        Provider.provider_type == ProviderType.CUSTOM.value,
-                        Provider.is_valid == True
-                    ).first()
-
-                if custom_provider:
-                    return ProviderType.CUSTOM.value
-
-            model_provider = cls.get_model_provider_class(model_provider_name)
-
-            if ProviderType.SYSTEM.value in support_provider_types \
-                    and model_provider.is_provider_type_system_supported():
-                return ProviderType.SYSTEM.value
-            elif ProviderType.CUSTOM.value in support_provider_types:
-                return ProviderType.CUSTOM.value
-        else:
+        if preferred_model_provider:
             return preferred_model_provider.preferred_provider_type
+        model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
+        support_provider_types = model_provider_rules['support_provider_types']
+
+        if ProviderType.CUSTOM.value in support_provider_types:
+            if (
+                custom_provider := db.session.query(Provider)
+                .filter(
+                    Provider.tenant_id == tenant_id,
+                    Provider.provider_name == model_provider_name,
+                    Provider.provider_type == ProviderType.CUSTOM.value,
+                    Provider.is_valid == True,
+                )
+                .first()
+            ):
+                return ProviderType.CUSTOM.value
+
+        model_provider = cls.get_model_provider_class(model_provider_name)
+
+        if ProviderType.SYSTEM.value in support_provider_types \
+                    and model_provider.is_provider_type_system_supported():
+            return ProviderType.SYSTEM.value
+        elif ProviderType.CUSTOM.value in support_provider_types:
+            return ProviderType.CUSTOM.value
 
     @classmethod
     def _get_preferred_provider(cls, tenant_id: str, model_provider_name: str):
@@ -168,7 +168,7 @@ class ModelProviderFactory:
 
         # get providers by preferred provider type
         providers = db.session.query(Provider) \
-            .filter(
+                .filter(
                 Provider.tenant_id == tenant_id,
                 Provider.provider_name == model_provider_name,
                 Provider.provider_type == preferred_provider_type
@@ -176,15 +176,14 @@ class ModelProviderFactory:
 
         no_system_provider = False
         if preferred_provider_type == ProviderType.SYSTEM.value:
-            quota_type_to_provider_dict = {}
-            for provider in providers:
-                quota_type_to_provider_dict[provider.quota_type] = provider
-
+            quota_type_to_provider_dict = {
+                provider.quota_type: provider for provider in providers
+            }
             model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
             for quota_type_enum in ProviderQuotaType:
                 quota_type = quota_type_enum.value
                 if quota_type in model_provider_rules['system_config']['supported_quota_types']:
-                    if quota_type in quota_type_to_provider_dict.keys():
+                    if quota_type in quota_type_to_provider_dict:
                         provider = quota_type_to_provider_dict[quota_type]
                         if provider.is_valid and provider.quota_limit > provider.quota_used:
                             return provider
@@ -204,23 +203,19 @@ class ModelProviderFactory:
                         except IntegrityError:
                             db.session.rollback()
                             provider = db.session.query(Provider) \
-                                .filter(
+                                    .filter(
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == model_provider_name,
                                 Provider.provider_type == ProviderType.SYSTEM.value,
                                 Provider.quota_type == ProviderQuotaType.TRIAL.value
                             ).first()
 
-                        if provider.quota_limit == 0:
-                            return None
-
-                        return provider
-
+                        return None if provider.quota_limit == 0 else provider
             no_system_provider = True
 
         if no_system_provider:
             providers = db.session.query(Provider) \
-                .filter(
+                    .filter(
                 Provider.tenant_id == tenant_id,
                 Provider.provider_name == model_provider_name,
                 Provider.provider_type == ProviderType.CUSTOM.value
@@ -229,26 +224,25 @@ class ModelProviderFactory:
         if preferred_provider_type == ProviderType.CUSTOM.value or no_system_provider:
             if providers:
                 return providers[0]
-            else:
-                try:
-                    provider = Provider(
-                        tenant_id=tenant_id,
-                        provider_name=model_provider_name,
-                        provider_type=ProviderType.CUSTOM.value,
-                        is_valid=False
-                    )
-                    db.session.add(provider)
-                    db.session.commit()
-                except IntegrityError:
-                    db.session.rollback()
-                    provider = db.session.query(Provider) \
+            try:
+                provider = Provider(
+                    tenant_id=tenant_id,
+                    provider_name=model_provider_name,
+                    provider_type=ProviderType.CUSTOM.value,
+                    is_valid=False
+                )
+                db.session.add(provider)
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                provider = db.session.query(Provider) \
                         .filter(
-                            Provider.tenant_id == tenant_id,
-                            Provider.provider_name == model_provider_name,
-                            Provider.provider_type == ProviderType.CUSTOM.value
-                        ).first()
+                        Provider.tenant_id == tenant_id,
+                        Provider.provider_name == model_provider_name,
+                        Provider.provider_type == ProviderType.CUSTOM.value
+                    ).first()
 
-                return provider
+            return provider
 
         return None
 

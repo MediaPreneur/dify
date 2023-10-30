@@ -117,8 +117,7 @@ class MilvusVectorIndex(BaseVectorIndex):
 
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
-        ids = vector_store.get_ids_by_document_id(document_id)
-        if ids:
+        if ids := vector_store.get_ids_by_document_id(document_id):
             vector_store.del_texts({
                 'filter': f'id in {ids}'
             })

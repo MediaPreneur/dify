@@ -22,25 +22,35 @@ def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspa
     if not mail.is_inited():
         return
 
-    logging.info(click.style('Start send invite member mail to {} in workspace {}'.format(to, workspace_name),
-                             fg='green'))
+    logging.info(
+        click.style(
+            f'Start send invite member mail to {to} in workspace {workspace_name}',
+            fg='green',
+        )
+    )
     start_at = time.perf_counter()
 
     try:
         mail.send(
             to=to,
-            subject="{} invited you to join {}".format(inviter_name, workspace_name),
+            subject=f"{inviter_name} invited you to join {workspace_name}",
             html="""<p>Hi there,</p>
 <p>{inviter_name} invited you to join {workspace_name}.</p>
 <p>Click <a href="{url}">here</a> to join.</p>
 <p>Thanks,</p>
-<p>Dify Team</p>""".format(inviter_name=inviter_name, workspace_name=workspace_name,
-                           url=f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}')
+<p>Dify Team</p>""".format(
+                inviter_name=inviter_name,
+                workspace_name=workspace_name,
+                url=f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}',
+            ),
         )
 
         end_at = time.perf_counter()
         logging.info(
-            click.style('Send invite member mail to {} succeeded: latency: {}'.format(to, end_at - start_at),
-                        fg='green'))
+            click.style(
+                f'Send invite member mail to {to} succeeded: latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception:
-        logging.exception("Send invite member mail to {} failed".format(to))
+        logging.exception(f"Send invite member mail to {to} failed")

@@ -40,7 +40,7 @@ class FileService:
 
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
-        file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.' + extension
+        file_key = f'upload_files/{current_user.current_tenant_id}/{file_uuid}.{extension}'
 
         # save file to storage
         storage.save(file_key, file_content)
@@ -70,7 +70,7 @@ class FileService:
     def upload_text(text: str, text_name: str) -> UploadFile:
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
-        file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.txt'
+        file_key = f'upload_files/{current_user.current_tenant_id}/{file_uuid}.txt'
 
         # save file to storage
         storage.save(file_key, text.encode('utf-8'))
@@ -81,7 +81,7 @@ class FileService:
             tenant_id=current_user.current_tenant_id,
             storage_type=config['STORAGE_TYPE'],
             key=file_key,
-            name=text_name + '.txt',
+            name=f'{text_name}.txt',
             size=len(text),
             extension='txt',
             mime_type='text/plain',
@@ -89,7 +89,7 @@ class FileService:
             created_at=datetime.datetime.utcnow(),
             used=True,
             used_by=current_user.id,
-            used_at=datetime.datetime.utcnow()
+            used_at=datetime.datetime.utcnow(),
         )
 
         db.session.add(upload_file)
@@ -106,8 +106,8 @@ class FileService:
             return cached_response['response']
 
         upload_file = db.session.query(UploadFile) \
-            .filter(UploadFile.id == file_id) \
-            .first()
+                .filter(UploadFile.id == file_id) \
+                .first()
 
         if not upload_file:
             raise NotFound("File not found")
@@ -118,6 +118,6 @@ class FileService:
             raise UnsupportedFileTypeError()
 
         text = FileExtractor.load(upload_file, return_text=True)
-        text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
+        text = text[:PREVIEW_WORDS_LIMIT] if text else ''
 
         return text

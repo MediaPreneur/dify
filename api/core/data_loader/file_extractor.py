@@ -52,9 +52,9 @@ class FileExtractor:
             loader = ExcelLoader(file_path)
         elif file_extension == '.pdf':
             loader = PdfLoader(file_path, upload_file=upload_file)
-        elif file_extension in ['.md', '.markdown']:
+        elif file_extension in {'.md', '.markdown'}:
             loader = MarkdownLoader(file_path, autodetect_encoding=True)
-        elif file_extension in ['.htm', '.html']:
+        elif file_extension in {'.htm', '.html'}:
             loader = HTMLLoader(file_path)
         elif file_extension == '.docx':
             loader = Docx2txtLoader(file_path)

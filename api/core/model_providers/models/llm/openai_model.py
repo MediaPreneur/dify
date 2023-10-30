@@ -56,7 +56,7 @@ class OpenAIModel(BaseLLM):
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
         if self.name in COMPLETION_MODELS:
-            client = EnhanceOpenAI(
+            return EnhanceOpenAI(
                 model_name=self.name,
                 streaming=self.streaming,
                 callbacks=self.callbacks,
@@ -64,29 +64,26 @@ class OpenAIModel(BaseLLM):
                 **self.credentials,
                 **provider_model_kwargs
             )
-        else:
-            # Fine-tuning is currently only available for the following base models:
-            # davinci, curie, babbage, and ada.
-            # This means that except for the fixed `completion` model,
-            # all other fine-tuned models are `completion` models.
-            extra_model_kwargs = {
-                'top_p': provider_model_kwargs.get('top_p'),
-                'frequency_penalty': provider_model_kwargs.get('frequency_penalty'),
-                'presence_penalty': provider_model_kwargs.get('presence_penalty'),
-            }
+        # Fine-tuning is currently only available for the following base models:
+        # davinci, curie, babbage, and ada.
+        # This means that except for the fixed `completion` model,
+        # all other fine-tuned models are `completion` models.
+        extra_model_kwargs = {
+            'top_p': provider_model_kwargs.get('top_p'),
+            'frequency_penalty': provider_model_kwargs.get('frequency_penalty'),
+            'presence_penalty': provider_model_kwargs.get('presence_penalty'),
+        }
 
-            client = EnhanceChatOpenAI(
-                model_name=self.name,
-                temperature=provider_model_kwargs.get('temperature'),
-                max_tokens=provider_model_kwargs.get('max_tokens'),
-                model_kwargs=extra_model_kwargs,
-                streaming=self.streaming,
-                callbacks=self.callbacks,
-                request_timeout=60,
-                **self.credentials
-            )
-
-        return client
+        return EnhanceChatOpenAI(
+            model_name=self.name,
+            temperature=provider_model_kwargs.get('temperature'),
+            max_tokens=provider_model_kwargs.get('max_tokens'),
+            model_kwargs=extra_model_kwargs,
+            streaming=self.streaming,
+            callbacks=self.callbacks,
+            request_timeout=60,
+            **self.credentials
+        )
 
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
@@ -158,16 +155,16 @@ class OpenAIModel(BaseLLM):
             return LLMBadRequestError(str(ex))
         elif isinstance(ex, openai.error.APIConnectionError):
             logging.warning("Failed to connect to OpenAI API.")
-            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIConnectionError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
             logging.warning("OpenAI service unavailable.")
-            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIUnavailableError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError(str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
             return LLMAuthorizationError(str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
-            return LLMBadRequestError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMBadRequestError(f"{ex.__class__.__name__}:{str(ex)}")
         else:
             return ex
 

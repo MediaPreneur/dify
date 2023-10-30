@@ -19,7 +19,12 @@ def clean_notion_document_task(document_ids: List[str], dataset_id: str):
 
     Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
-    logging.info(click.style('Start clean document when import form notion document deleted: {}'.format(dataset_id), fg='green'))
+    logging.info(
+        click.style(
+            f'Start clean document when import form notion document deleted: {dataset_id}',
+            fg='green',
+        )
+    )
     start_at = time.perf_counter()
 
     try:
@@ -52,8 +57,10 @@ def clean_notion_document_task(document_ids: List[str], dataset_id: str):
         db.session.commit()
         end_at = time.perf_counter()
         logging.info(
-            click.style('Clean document when import form notion document deleted end :: {} latency: {}'.format(
-                dataset_id, end_at - start_at),
-                        fg='green'))
+            click.style(
+                f'Clean document when import form notion document deleted end :: {dataset_id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception:
         logging.exception("Cleaned document when import form notion document deleted  failed")

@@ -173,15 +173,14 @@ class DatesetDocumentStore:
         """Get the stored hash for a document, if it exists."""
         document_segment = self.get_document_segment(doc_id)
 
-        if document_segment is None:
-            return None
-
-        return document_segment.index_node_hash
+        return None if document_segment is None else document_segment.index_node_hash
 
     def get_document_segment(self, doc_id: str) -> DocumentSegment:
-        document_segment = db.session.query(DocumentSegment).filter(
-            DocumentSegment.dataset_id == self._dataset.id,
-            DocumentSegment.index_node_id == doc_id
-        ).first()
-
-        return document_segment
+        return (
+            db.session.query(DocumentSegment)
+            .filter(
+                DocumentSegment.dataset_id == self._dataset.id,
+                DocumentSegment.index_node_id == doc_id,
+            )
+            .first()
+        )

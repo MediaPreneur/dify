@@ -44,15 +44,15 @@ class OpenAIModeration(BaseModeration):
             return LLMBadRequestError(str(ex))
         elif isinstance(ex, openai.error.APIConnectionError):
             logging.warning("Failed to connect to OpenAI API.")
-            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIConnectionError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
             logging.warning("OpenAI service unavailable.")
-            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIUnavailableError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError(str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
             return LLMAuthorizationError(str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
-            return LLMBadRequestError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMBadRequestError(f"{ex.__class__.__name__}:{str(ex)}")
         else:
             return ex

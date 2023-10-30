@@ -36,7 +36,7 @@ class LocalAIModel(BaseLLM):
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
         if self.model_mode == ModelMode.COMPLETION:
-            client = EnhanceOpenAI(
+            return EnhanceOpenAI(
                 model_name=self.name,
                 streaming=self.streaming,
                 callbacks=self.callbacks,
@@ -45,24 +45,21 @@ class LocalAIModel(BaseLLM):
                 openai_api_base=self.credentials['server_url'] + '/v1',
                 **provider_model_kwargs
             )
-        else:
-            extra_model_kwargs = {
-                'top_p': provider_model_kwargs.get('top_p')
-            }
+        extra_model_kwargs = {
+            'top_p': provider_model_kwargs.get('top_p')
+        }
 
-            client = EnhanceChatOpenAI(
-                model_name=self.name,
-                temperature=provider_model_kwargs.get('temperature'),
-                max_tokens=provider_model_kwargs.get('max_tokens'),
-                model_kwargs=extra_model_kwargs,
-                streaming=self.streaming,
-                callbacks=self.callbacks,
-                request_timeout=60,
-                openai_api_key="1",
-                openai_api_base=self.credentials['server_url'] + '/v1'
-            )
-
-        return client
+        return EnhanceChatOpenAI(
+            model_name=self.name,
+            temperature=provider_model_kwargs.get('temperature'),
+            max_tokens=provider_model_kwargs.get('max_tokens'),
+            model_kwargs=extra_model_kwargs,
+            streaming=self.streaming,
+            callbacks=self.callbacks,
+            request_timeout=60,
+            openai_api_key="1",
+            openai_api_base=self.credentials['server_url'] + '/v1',
+        )
 
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
@@ -90,7 +87,14 @@ class LocalAIModel(BaseLLM):
         if isinstance(prompts, str):
             return self._client.get_num_tokens(prompts)
         else:
-            return max(sum([self._client.get_num_tokens(get_buffer_string([m])) for m in prompts]) - len(prompts), 0)
+            return max(
+                sum(
+                    self._client.get_num_tokens(get_buffer_string([m]))
+                    for m in prompts
+                )
+                - len(prompts),
+                0,
+            )
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
@@ -113,16 +117,16 @@ class LocalAIModel(BaseLLM):
             return LLMBadRequestError(str(ex))
         elif isinstance(ex, openai.error.APIConnectionError):
             logging.warning("Failed to connect to LocalAI API.")
-            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIConnectionError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
             logging.warning("LocalAI service unavailable.")
-            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIUnavailableError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError(str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
             return LLMAuthorizationError(str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
-            return LLMBadRequestError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMBadRequestError(f"{ex.__class__.__name__}:{str(ex)}")
         else:
             return ex
 

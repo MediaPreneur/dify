@@ -44,7 +44,6 @@ class OrchestratorRuleParser:
         model_dict = self.app_model_config.model_dict
         return_resource = self.app_model_config.retriever_resource_dict.get('enabled', False)
 
-        chain = None
         if agent_mode_config and agent_mode_config.get('enabled'):
             tool_configs = agent_mode_config.get('tools', [])
             agent_provider_name = model_dict.get('provider', 'openai')
@@ -75,7 +74,7 @@ class OrchestratorRuleParser:
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
-                    or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
+                        or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
                 if planning_strategy == PlanningStrategy.FUNCTION_CALL:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
@@ -123,10 +122,9 @@ class OrchestratorRuleParser:
 
             return AgentExecutor(agent_configuration)
 
-        return chain
+        return None
 
-    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) \
-            -> Optional[SensitiveWordAvoidanceChain]:
+    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) -> Optional[SensitiveWordAvoidanceChain]:
         """
         Convert app sensitive word avoidance config to chain
 
@@ -147,18 +145,18 @@ class OrchestratorRuleParser:
                         if sensitive_word_avoidance_config.get("canned_response")
                         else 'Your content violates our usage policy. Please revise and try again.',
                     )
-                else:
-                    sensitive_words = sensitive_word_avoidance_config.get("words", "")
-                    if sensitive_words:
-                        sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
-                            type=SensitiveWordAvoidanceRule.Type.KEYWORDS,
-                            canned_response=sensitive_word_avoidance_config.get("canned_response")
-                            if sensitive_word_avoidance_config.get("canned_response")
-                            else 'Your content violates our usage policy. Please revise and try again.',
-                            extra_params={
-                                'sensitive_words': sensitive_words.split(','),
-                            }
-                        )
+                elif sensitive_words := sensitive_word_avoidance_config.get(
+                    "words", ""
+                ):
+                    sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
+                        type=SensitiveWordAvoidanceRule.Type.KEYWORDS,
+                        canned_response=sensitive_word_avoidance_config.get("canned_response")
+                        if sensitive_word_avoidance_config.get("canned_response")
+                        else 'Your content violates our usage policy. Please revise and try again.',
+                        extra_params={
+                            'sensitive_words': sensitive_words.split(','),
+                        }
+                    )
 
         if sensitive_word_avoidance_rule:
             return SensitiveWordAvoidanceChain(
@@ -210,8 +208,7 @@ class OrchestratorRuleParser:
     def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask,
                                   dataset_configs: dict, rest_tokens: int,
                                   return_resource: bool = False, retriever_from: str = 'dev',
-                                  **kwargs) \
-            -> Optional[BaseTool]:
+                                  **kwargs) -> Optional[BaseTool]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param rest_tokens:
@@ -231,7 +228,7 @@ class OrchestratorRuleParser:
         if not dataset:
             return None
 
-        if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
+        if dataset.available_document_count == 0:
             return None
 
         top_k = dataset_configs.get("top_k", 2)
@@ -244,17 +241,15 @@ class OrchestratorRuleParser:
         if score_threshold_config and score_threshold_config.get("enable"):
             score_threshold = score_threshold_config.get("value")
 
-        tool = DatasetRetrieverTool.from_dataset(
+        return DatasetRetrieverTool.from_dataset(
             dataset=dataset,
             top_k=top_k,
             score_threshold=score_threshold,
             callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
             conversation_message_task=conversation_message_task,
             return_resource=return_resource,
-            retriever_from=retriever_from
+            retriever_from=retriever_from,
         )
-
-        return tool
 
     def to_web_reader_tool(self, tool_config: dict, agent_model_instance: BaseLLM, **kwargs) -> Optional[BaseTool]:
         """
@@ -276,36 +271,31 @@ class OrchestratorRuleParser:
         except ProviderTokenNotInitError:
             summary_model_instance = None
 
-        tool = WebReaderTool(
-            model_instance=summary_model_instance if summary_model_instance else None,
+        return WebReaderTool(
+            model_instance=summary_model_instance
+            if summary_model_instance
+            else None,
             max_chunk_length=4000,
-            continue_reading=True
+            continue_reading=True,
         )
-
-        return tool
 
     def to_google_search_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
         tool_provider = SerpAPIToolProvider(tenant_id=self.tenant_id)
-        func_kwargs = tool_provider.credentials_to_func_kwargs()
-        if not func_kwargs:
+        if func_kwargs := tool_provider.credentials_to_func_kwargs():
+            return Tool(
+                name="google_search",
+                description="A tool for performing a Google search and extracting snippets and webpages "
+                "when you need to search for something you don't know or when your information "
+                "is not up to date. "
+                "Input should be a search query.",
+                func=OptimizedSerpAPIWrapper(**func_kwargs).run,
+                args_schema=OptimizedSerpAPIInput,
+            )
+        else:
             return None
 
-        tool = Tool(
-            name="google_search",
-            description="A tool for performing a Google search and extracting snippets and webpages "
-                        "when you need to search for something you don't know or when your information "
-                        "is not up to date. "
-                        "Input should be a search query.",
-            func=OptimizedSerpAPIWrapper(**func_kwargs).run,
-            args_schema=OptimizedSerpAPIInput
-        )
-
-        return tool
-
     def to_current_datetime_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
-        tool = DatetimeTool()
-
-        return tool
+        return DatetimeTool()
 
     def to_wikipedia_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
         class WikipediaInput(BaseModel):

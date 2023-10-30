@@ -25,10 +25,14 @@ from services.app_model_config_service import AppModelConfigService
 
 
 def _get_app(app_id, tenant_id):
-    app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()
-    if not app:
+    if (
+        app := db.session.query(App)
+        .filter(App.id == app_id, App.tenant_id == tenant_id)
+        .first()
+    ):
+        return app
+    else:
         raise AppNotFoundError
-    return app
 
 
 class AppListApi(Resource):
@@ -44,14 +48,17 @@ class AppListApi(Resource):
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
         args = parser.parse_args()
 
-        app_models = db.paginate(
-            db.select(App).where(App.tenant_id == current_user.current_tenant_id,
-                                 App.is_universal == False).order_by(App.created_at.desc()),
+        return db.paginate(
+            db.select(App)
+            .where(
+                App.tenant_id == current_user.current_tenant_id,
+                App.is_universal == False,
+            )
+            .order_by(App.created_at.desc()),
             page=args['page'],
             per_page=args['limit'],
-            error_out=False)
-
-        return app_models
+            error_out=False,
+        )
 
     @setup_required
     @login_required
@@ -94,11 +101,10 @@ class AppListApi(Resource):
             if not model_provider:
                 if not default_model:
                     raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
-                else:
-                    model_config_dict["model"]["provider"] = default_model.model_provider.provider_name
-                    model_config_dict["model"]["name"] = default_model.name
+                        'No Default System Reasoning Model available. Please configure in the Settings -> Model Provider.'
+                    )
+                model_config_dict["model"]["provider"] = default_model.model_provider.provider_name
+                model_config_dict["model"]["name"] = default_model.name
 
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
@@ -136,13 +142,12 @@ class AppListApi(Resource):
             if not model_provider:
                 if not default_model:
                     raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
-                else:
-                    model_dict = app_model_config.model_dict
-                    model_dict['provider'] = default_model.model_provider.provider_name
-                    model_dict['name'] = default_model.name
-                    app_model_config.model = json.dumps(model_dict)
+                        'No Default System Reasoning Model available. Please configure in the Settings -> Model Provider.'
+                    )
+                model_dict = app_model_config.model_dict
+                model_dict['provider'] = default_model.model_provider.provider_name
+                model_dict['name'] = default_model.name
+                app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']
         app.mode = args['mode']
@@ -204,9 +209,7 @@ class AppApi(Resource):
     def get(self, app_id):
         """Get app detail"""
         app_id = str(app_id)
-        app = _get_app(app_id, current_user.current_tenant_id)
-
-        return app
+        return _get_app(app_id, current_user.current_tenant_id)
 
     @setup_required
     @login_required
@@ -320,8 +323,8 @@ class AppApiStatus(Resource):
 class AppCopy(Resource):
     @staticmethod
     def create_app_copy(app):
-        copy_app = App(
-            name=app.name + ' copy',
+        return App(
+            name=f'{app.name} copy',
             icon=app.icon,
             icon_background=app.icon_background,
             tenant_id=app.tenant_id,
@@ -330,9 +333,8 @@ class AppCopy(Resource):
             enable_site=app.enable_site,
             enable_api=app.enable_api,
             api_rpm=app.api_rpm,
-            api_rph=app.api_rph
+            api_rph=app.api_rph,
         )
-        return copy_app
 
     @staticmethod
     def create_app_model_config_copy(app_config, copy_app_id):
@@ -352,11 +354,11 @@ class AppCopy(Resource):
         copy_app = self.create_app_copy(app)
         db.session.add(copy_app)
 
-        app_config = db.session.query(AppModelConfig). \
-            filter(AppModelConfig.app_id == app_id). \
-            one_or_none()
-
-        if app_config:
+        if (
+            app_config := db.session.query(AppModelConfig)
+            .filter(AppModelConfig.app_id == app_id)
+            .one_or_none()
+        ):
             copy_app_model_config = self.create_app_model_config_copy(app_config, copy_app.id)
             db.session.add(copy_app_model_config)
             db.session.commit()

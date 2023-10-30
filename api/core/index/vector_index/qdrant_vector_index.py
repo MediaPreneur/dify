@@ -21,19 +21,18 @@ class QdrantConfig(BaseModel):
     root_path: Optional[str]
 
     def to_qdrant_params(self):
-        if self.endpoint and self.endpoint.startswith('path:'):
-            path = self.endpoint.replace('path:', '')
-            if not os.path.isabs(path):
-                path = os.path.join(self.root_path, path)
-
-            return {
-                'path': path
-            }
-        else:
+        if not self.endpoint or not self.endpoint.startswith('path:'):
             return {
                 'url': self.endpoint,
                 'api_key': self.api_key,
             }
+        path = self.endpoint.replace('path:', '')
+        if not os.path.isabs(path):
+            path = os.path.join(self.root_path, path)
+
+        return {
+            'path': path
+        }
 
 
 class QdrantVectorIndex(BaseVectorIndex):
@@ -46,10 +45,15 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def get_index_name(self, dataset: Dataset) -> str:
         if dataset.collection_binding_id:
-            dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
-                one_or_none()
-            if dataset_collection_binding:
+            if (
+                dataset_collection_binding := db.session.query(
+                    DatasetCollectionBinding
+                )
+                .filter(
+                    DatasetCollectionBinding.id == dataset.collection_binding_id
+                )
+                .one_or_none()
+            ):
                 return dataset_collection_binding.collection_name
             else:
                 raise ValueError('Dataset Collection Bindings is not exist!')

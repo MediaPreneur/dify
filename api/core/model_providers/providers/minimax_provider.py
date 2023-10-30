@@ -121,29 +121,29 @@ class MinimaxProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value \
-                or (self.provider.provider_type == ProviderType.SYSTEM.value
-                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'minimax_group_id': None,
-                    'minimax_api_key': None,
-                }
+        if self.provider.provider_type != ProviderType.CUSTOM.value and (
+            self.provider.provider_type != ProviderType.SYSTEM.value
+            or self.provider.quota_type != ProviderQuotaType.FREE.value
+        ):
+            return {}
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'minimax_group_id': None,
+                'minimax_api_key': None,
+            }
 
-            if credentials['minimax_api_key']:
-                credentials['minimax_api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['minimax_api_key']
-                )
+        if credentials['minimax_api_key']:
+            credentials['minimax_api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['minimax_api_key']
+            )
 
-                if obfuscated:
-                    credentials['minimax_api_key'] = encrypter.obfuscated_token(credentials['minimax_api_key'])
+            if obfuscated:
+                credentials['minimax_api_key'] = encrypter.obfuscated_token(credentials['minimax_api_key'])
 
-            return credentials
-
-        return {}
+        return credentials
 
     def should_deduct_quota(self):
         return True

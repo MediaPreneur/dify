@@ -33,12 +33,10 @@ class ChatMessageAudioApi(Resource):
         file = request.files['file']
 
         try:
-            response = AudioService.transcript(
+            return AudioService.transcript(
                 tenant_id=app_model.tenant_id,
                 file=file,
             )
-
-            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()

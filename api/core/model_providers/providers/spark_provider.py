@@ -142,43 +142,43 @@ class SparkProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value \
-                or (self.provider.provider_type == ProviderType.SYSTEM.value
-                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'app_id': None,
-                    'api_key': None,
-                    'api_secret': None,
-                }
-
-            if credentials['api_key']:
-                credentials['api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_key']
-                )
-
-                if obfuscated:
-                    credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
-
-            if credentials['api_secret']:
-                credentials['api_secret'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_secret']
-                )
-
-                if obfuscated:
-                    credentials['api_secret'] = encrypter.obfuscated_token(credentials['api_secret'])
-
-            return credentials
-        else:
+        if self.provider.provider_type != ProviderType.CUSTOM.value and (
+            self.provider.provider_type != ProviderType.SYSTEM.value
+            or self.provider.quota_type != ProviderQuotaType.FREE.value
+        ):
             return {
                 'app_id': None,
                 'api_key': None,
                 'api_secret': None,
             }
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'app_id': None,
+                'api_key': None,
+                'api_secret': None,
+            }
+
+        if credentials['api_key']:
+            credentials['api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_key']
+            )
+
+            if obfuscated:
+                credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
+
+        if credentials['api_secret']:
+            credentials['api_secret'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_secret']
+            )
+
+            if obfuscated:
+                credentials['api_secret'] = encrypter.obfuscated_token(credentials['api_secret'])
+
+        return credentials
 
     def should_deduct_quota(self):
         return True

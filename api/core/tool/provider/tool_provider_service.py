@@ -13,7 +13,7 @@ class ToolProviderService:
         if provider_name == 'serpapi':
             return SerpAPIToolProvider(tenant_id)
         else:
-            raise Exception('tool provider {} not found'.format(provider_name))
+            raise Exception(f'tool provider {provider_name} not found')
 
     def get_credentials(self, obfuscated: bool = False) -> Optional[dict]:
         """

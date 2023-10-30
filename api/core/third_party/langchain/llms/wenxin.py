@@ -37,7 +37,7 @@ class _WenxinEndpointClient(BaseModel):
 
     def get_access_token(self) -> str:
         url = f"https://aip.baidubce.com/oauth/2.0/token?client_id={self.api_key}" \
-              f"&client_secret={self.secret_key}&grant_type=client_credentials"
+                  f"&client_secret={self.secret_key}&grant_type=client_credentials"
 
         headers = {
             'Content-Type': 'application/json',
@@ -53,15 +53,11 @@ class _WenxinEndpointClient(BaseModel):
                 f" error: {response.json()['error_description']}"
             )
 
-        access_token = response.json()['access_token']
-
-        # todo add cache
-
-        return access_token
+        return response.json()['access_token']
 
     def post(self, request: dict) -> Any:
         if 'model' not in request:
-            raise ValueError(f"Wenxin Model name is required")
+            raise ValueError("Wenxin Model name is required")
 
         model_url_map = {
             'ernie-bot-4': 'completions_pro',
@@ -84,16 +80,15 @@ class _WenxinEndpointClient(BaseModel):
         if not response.ok:
             raise ValueError(f"Wenxin HTTP {response.status_code} error: {response.text}")
 
-        if not stream:
-            json_response = response.json()
-            if 'error_code' in json_response:
-                raise ValueError(
-                    f"Wenxin API {json_response['error_code']}"
-                    f" error: {json_response['error_msg']}"
-                )
-            return json_response
-        else:
+        if stream:
             return response
+        json_response = response.json()
+        if 'error_code' in json_response:
+            raise ValueError(
+                f"Wenxin API {json_response['error_code']}"
+                f" error: {json_response['error_msg']}"
+            )
+        return json_response
 
 
 class Wenxin(BaseChatModel):
@@ -302,7 +297,7 @@ class Wenxin(BaseChatModel):
         Returns:
             The sum of the number of tokens across the messages.
         """
-        return sum([self.get_num_tokens(m.content) for m in messages])
+        return sum(self.get_num_tokens(m.content) for m in messages)
 
     def _combine_llm_outputs(self, llm_outputs: List[Optional[dict]]) -> dict:
         overall_token_usage: dict = {}

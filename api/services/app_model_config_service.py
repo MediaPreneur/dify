@@ -18,13 +18,7 @@ class AppModelConfigService:
         # verify if the dataset ID exists
         dataset = DatasetService.get_dataset(dataset_id)
 
-        if not dataset:
-            return False
-
-        if dataset.tenant_id != account.current_tenant_id:
-            return False
-
-        return True
+        return False if not dataset else dataset.tenant_id == account.current_tenant_id
 
     @staticmethod
     def validate_model_completion_params(cp: dict, model_name: str) -> dict:
@@ -57,21 +51,18 @@ class AppModelConfigService:
             cp["stop"] = []
         elif not isinstance(cp["stop"], list):
             raise ValueError("stop in model.completion_params must be of list type")
-        
+
         if len(cp["stop"]) > 4:
             raise ValueError("stop sequences must be less than 4")
 
-        # Filter out extra parameters
-        filtered_cp = {
+        return {
             "max_tokens": cp["max_tokens"],
             "temperature": cp["temperature"],
             "top_p": cp["top_p"],
             "presence_penalty": cp["presence_penalty"],
             "frequency_penalty": cp["frequency_penalty"],
-            "stop": cp["stop"]
+            "stop": cp["stop"],
         }
-
-        return filtered_cp
 
     @staticmethod
     def validate_configuration(tenant_id: str, account: Account, config: dict, mode: str) -> dict:
@@ -204,7 +195,7 @@ class AppModelConfigService:
         model_ids = [m['id'] for m in model_list]
         if config["model"]["name"] not in model_ids:
             raise ValueError("model.name must be in the specified model list")
-        
+
         # model.mode
         if 'mode' not in config['model'] or not config['model']["mode"]:
             config['model']["mode"] = ""
@@ -265,7 +256,7 @@ class AppModelConfigService:
                     raise ValueError("options in user_input_form must be a list of strings")
 
                 if "default" in form_item and form_item['default'] \
-                        and form_item["default"] not in form_item["options"]:
+                            and form_item["default"] not in form_item["options"]:
                     raise ValueError("default value in user_input_form must be in the options list")
 
         # pre_prompt
@@ -332,18 +323,19 @@ class AppModelConfigService:
 
                 if not AppModelConfigService.is_dataset_exists(account, tool_item["id"]):
                     raise ValueError("Dataset ID does not exist, please check your permission.")
-        
+
         # dataset_query_variable
         AppModelConfigService.is_dataset_query_variable_valid(config, mode)
 
         # advanced prompt validation
         AppModelConfigService.is_advanced_prompt_valid(config, mode)
 
-        # Filter out extra parameters
-        filtered_config = {
+        return {
             "opening_statement": config["opening_statement"],
             "suggested_questions": config["suggested_questions"],
-            "suggested_questions_after_answer": config["suggested_questions_after_answer"],
+            "suggested_questions_after_answer": config[
+                "suggested_questions_after_answer"
+            ],
             "speech_to_text": config["speech_to_text"],
             "retriever_resource": config["retriever_resource"],
             "more_like_this": config["more_like_this"],
@@ -352,7 +344,7 @@ class AppModelConfigService:
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],
                 "mode": config['model']["mode"],
-                "completion_params": config["model"]["completion_params"]
+                "completion_params": config["model"]["completion_params"],
             },
             "user_input_form": config["user_input_form"],
             "dataset_query_variable": config.get('dataset_query_variable'),
@@ -361,10 +353,8 @@ class AppModelConfigService:
             "prompt_type": config["prompt_type"],
             "chat_prompt_config": config["chat_prompt_config"],
             "completion_prompt_config": config["completion_prompt_config"],
-            "dataset_configs": config["dataset_configs"]
+            "dataset_configs": config["dataset_configs"],
         }
-
-        return filtered_config
     
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:

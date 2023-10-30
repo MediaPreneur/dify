@@ -33,8 +33,7 @@ class PdfLoader(BaseLoader):
         plaintext_file_exists = False
         if self._upload_file:
             if self._upload_file.hash:
-                plaintext_file_key = 'upload_files/' + self._upload_file.tenant_id + '/' \
-                                     + self._upload_file.hash + '.0625.plaintext'
+                plaintext_file_key = f'upload_files/{self._upload_file.tenant_id}/{self._upload_file.hash}.0625.plaintext'
                 try:
                     text = storage.load(plaintext_file_key).decode('utf-8')
                     plaintext_file_exists = True
@@ -42,9 +41,7 @@ class PdfLoader(BaseLoader):
                 except FileNotFoundError:
                     pass
         documents = PyPDFium2Loader(file_path=self._file_path).load()
-        text_list = []
-        for document in documents:
-            text_list.append(document.page_content)
+        text_list = [document.page_content for document in documents]
         text = "\n\n".join(text_list)
 
         # save plaintext file for caching

@@ -18,7 +18,14 @@ from models.provider import Provider, ProviderType
 class IndexBuilder:
     @classmethod
     def get_index(cls, dataset: Dataset, indexing_technique: str, ignore_high_quality_check: bool = False):
-        if indexing_technique == "high_quality":
+        if indexing_technique == "economy":
+            return KeywordTableIndex(
+                dataset=dataset,
+                config=KeywordTableConfig(
+                    max_keywords_per_chunk=10
+                )
+            )
+        elif indexing_technique == "high_quality":
             if not ignore_high_quality_check and dataset.indexing_technique != 'high_quality':
                 return None
 
@@ -34,13 +41,6 @@ class IndexBuilder:
                 dataset=dataset,
                 config=current_app.config,
                 embeddings=embeddings
-            )
-        elif indexing_technique == "economy":
-            return KeywordTableIndex(
-                dataset=dataset,
-                config=KeywordTableConfig(
-                    max_keywords_per_chunk=10
-                )
             )
         else:
             raise ValueError('Unknown indexing technique')

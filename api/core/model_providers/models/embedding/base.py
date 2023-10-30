@@ -83,10 +83,7 @@ class BaseEmbedding(BaseProviderModel):
         :param text:
         :return:
         """
-        if len(text) == 0:
-            return 0
-
-        return len(_get_token_ids_default_method(text))
+        return 0 if not text else len(_get_token_ids_default_method(text))
 
     def get_currency(self):
         """
@@ -94,8 +91,7 @@ class BaseEmbedding(BaseProviderModel):
 
         :return: get from price config, default 'USD'
         """
-        currency = self.price_config['currency']
-        return currency
+        return self.price_config['currency']
 
     @abstractmethod
     def handle_exceptions(self, ex: Exception) -> Exception:

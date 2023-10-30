@@ -100,36 +100,35 @@ class BaichuanProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'api_key': None,
-                    'secret_key': None,
-                }
-
-            if credentials['api_key']:
-                credentials['api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_key']
-                )
-
-                if obfuscated:
-                    credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
-
-            if credentials['secret_key']:
-                credentials['secret_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['secret_key']
-                )
-
-                if obfuscated:
-                    credentials['secret_key'] = encrypter.obfuscated_token(credentials['secret_key'])
-
-            return credentials
-        else:
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
             return {}
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'api_key': None,
+                'secret_key': None,
+            }
+
+        if credentials['api_key']:
+            credentials['api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_key']
+            )
+
+            if obfuscated:
+                credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
+
+        if credentials['secret_key']:
+            credentials['secret_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['secret_key']
+            )
+
+            if obfuscated:
+                credentials['secret_key'] = encrypter.obfuscated_token(credentials['secret_key'])
+
+        return credentials
 
     def should_deduct_quota(self):
         return True

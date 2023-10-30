@@ -81,9 +81,7 @@ class HuggingFaceEndpointLLM(HuggingFaceEndpoint):
         response = self.client.text_generation(prompt, stream=self.streaming, details=True, **gen_kwargs)
 
         if self.streaming and isinstance(response, Iterable):
-            combined_text_output = ""
-            for token in self._stream_response(response, run_manager):
-                combined_text_output += token
+            combined_text_output = "".join(self._stream_response(response, run_manager))
             completion = combined_text_output
         else:
             completion = response.generated_text

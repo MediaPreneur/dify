@@ -31,9 +31,14 @@ class ReadOnlyConversationTokenDBBufferSharedMemory(BaseChatMemory):
 
         chat_messages: List[PromptMessage] = []
         for message in messages:
-            chat_messages.append(PromptMessage(content=message.query, type=MessageType.USER))
-            chat_messages.append(PromptMessage(content=message.answer, type=MessageType.ASSISTANT))
-
+            chat_messages.extend(
+                (
+                    PromptMessage(content=message.query, type=MessageType.USER),
+                    PromptMessage(
+                        content=message.answer, type=MessageType.ASSISTANT
+                    ),
+                )
+            )
         if not chat_messages:
             return []
 

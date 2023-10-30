@@ -90,7 +90,7 @@ class WebReaderTool(BaseTool):
             texts = character_splitter.split_text(page_contents)
             docs = [Document(page_content=t) for t in texts]
 
-            if len(docs) == 0 or docs[0].page_content.endswith('TEXT:'):
+            if not docs or docs[0].page_content.endswith('TEXT:'):
                 return "No content found."
 
             # only use first 5 docs
@@ -107,8 +107,8 @@ class WebReaderTool(BaseTool):
 
             if self.continue_reading and len(page_contents) >= self.max_chunk_length:
                 page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
-                                 f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
-                                 f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
+                                     f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
+                                     f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
 
         return page_contents
 
@@ -148,12 +148,12 @@ def get_url(url: str) -> str:
     head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
     if head_response.status_code != 200:
-        return "URL returned status code {}.".format(head_response.status_code)
+        return f"URL returned status code {head_response.status_code}."
 
     # check content-type
     main_content_type = head_response.headers.get('Content-Type').split(';')[0].strip()
     if main_content_type not in supported_content_types:
-        return "Unsupported content-type [{}] of URL.".format(main_content_type)
+        return f"Unsupported content-type [{main_content_type}] of URL."
 
     if main_content_type in file_extractor.SUPPORT_URL_CONTENT_TYPES:
         return FileExtractor.load_from_url(url, return_text=True)
@@ -164,15 +164,13 @@ def get_url(url: str) -> str:
     if not a['plain_text'] or not a['plain_text'].strip():
         return get_url_from_newspaper3k(url)
 
-    res = FULL_TEMPLATE.format(
+    return FULL_TEMPLATE.format(
         title=a['title'],
         authors=a['byline'],
         publish_date=a['date'],
         top_image="",
         text=a['plain_text'] if a['plain_text'] else "",
     )
-
-    return res
 
 
 def get_url_from_newspaper3k(url: str) -> str:
@@ -181,15 +179,13 @@ def get_url_from_newspaper3k(url: str) -> str:
     a.download()
     a.parse()
 
-    res = FULL_TEMPLATE.format(
+    return FULL_TEMPLATE.format(
         title=a.title,
         authors=a.authors,
         publish_date=a.publish_date,
         top_image=a.top_image,
         text=a.text,
     )
-
-    return res
 
 
 def extract_using_readabilipy(html):
@@ -199,7 +195,7 @@ def extract_using_readabilipy(html):
     html_path = f_html.name
 
     # Call Mozilla's Readability.js Readability.parse() function via node, writing output to a temporary file
-    article_json_path = html_path + ".json"
+    article_json_path = f"{html_path}.json"
     jsdir = os.path.join(find_module_path('readabilipy'), 'javascript')
     with chdir(jsdir):
         subprocess.check_call(["node", "ExtractArticle.js", "-i", html_path, "-o", article_json_path])
@@ -281,14 +277,14 @@ def plain_text_leaf_node(element):
     # Extract all text, stripped of any child HTML elements and normalise it
     plain_text = normalise_text(element.get_text())
     if plain_text != "" and element.name == "li":
-        plain_text = "* {}, ".format(plain_text)
+        plain_text = f"* {plain_text}, "
     if plain_text == "":
         plain_text = None
-    if "data-node-index" in element.attrs:
-        plain = {"node_index": element["data-node-index"], "text": plain_text}
-    else:
-        plain = {"text": plain_text}
-    return plain
+    return (
+        {"node_index": element["data-node-index"], "text": plain_text}
+        if "data-node-index" in element.attrs
+        else {"text": plain_text}
+    )
 
 
 def plain_content(readability_content, content_digests, node_indexes):
@@ -347,8 +343,7 @@ def add_node_indexes(element, node_index="0"):
     # Add index to current element
     element["data-node-index"] = node_index
     # Add index to child elements
-    for local_idx, child in enumerate(
-            [c for c in element.contents if not is_text(c)], start=1):
+    for local_idx, child in enumerate((c for c in element.contents if not is_text(c)), start=1):
         # Can't add attributes to leaf string types
         child_index = "{stem}.{local}".format(
             stem=node_index, local=local_idx)
@@ -373,7 +368,7 @@ def strip_control_characters(text):
     #   [Cn]: Other, Not Assigned
     #   [Co]: Other, Private Use
     #   [Cs]: Other, Surrogate
-    control_chars = set(['Cc', 'Cf', 'Cn', 'Co', 'Cs'])
+    control_chars = {'Cc', 'Cf', 'Cn', 'Co', 'Cs'}
     retained_chars = ['\t', '\n', '\r', '\f']
 
     # Remove non-printing control characters

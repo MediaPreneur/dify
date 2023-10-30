@@ -80,31 +80,32 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Do nothing."""
         # kwargs={}
-        if self._current_loop and self._current_loop.status == 'llm_started':
-            self._current_loop.status = 'llm_end'
-            if response.llm_output:
-                self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
-            else:
-                self._current_loop.prompt_tokens = self.model_instance.get_num_tokens(
-                    [PromptMessage(content=self._current_loop.prompt)]
-                )
-            completion_generation = response.generations[0][0]
-            if isinstance(completion_generation, ChatGeneration):
-                completion_message = completion_generation.message
-                if 'function_call' in completion_message.additional_kwargs:
-                    self._current_loop.completion \
+        if not self._current_loop or self._current_loop.status != 'llm_started':
+            return
+        self._current_loop.status = 'llm_end'
+        if response.llm_output:
+            self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
+        else:
+            self._current_loop.prompt_tokens = self.model_instance.get_num_tokens(
+                [PromptMessage(content=self._current_loop.prompt)]
+            )
+        completion_generation = response.generations[0][0]
+        if isinstance(completion_generation, ChatGeneration):
+            completion_message = completion_generation.message
+            if 'function_call' in completion_message.additional_kwargs:
+                self._current_loop.completion \
                         = json.dumps({'function_call': completion_message.additional_kwargs['function_call']})
-                else:
-                    self._current_loop.completion = response.generations[0][0].text
             else:
-                self._current_loop.completion = completion_generation.text
+                self._current_loop.completion = response.generations[0][0].text
+        else:
+            self._current_loop.completion = completion_generation.text
 
-            if response.llm_output:
-                self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
-            else:
-                self._current_loop.completion_tokens = self.model_instance.get_num_tokens(
-                    [PromptMessage(content=self._current_loop.completion)]
-                )
+        if response.llm_output:
+            self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
+        else:
+            self._current_loop.completion_tokens = self.model_instance.get_num_tokens(
+                [PromptMessage(content=self._current_loop.completion)]
+            )
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
@@ -134,8 +135,13 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         tool_input = json.dumps({"query": action.tool_input}
                                 if isinstance(action.tool_input, str) else action.tool_input)
         completion = None
-        if isinstance(action, openai_functions_agent.base._FunctionsAgentAction) \
-                or isinstance(action, openai_functions_multi_agent.base._FunctionsAgentAction):
+        if isinstance(
+            action,
+            (
+                openai_functions_agent.base._FunctionsAgentAction,
+                openai_functions_multi_agent.base._FunctionsAgentAction,
+            ),
+        ):
             thought = action.log.strip()
             completion = json.dumps({'function_call': action.message_log[0].additional_kwargs['function_call']})
         else:
@@ -196,7 +202,10 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
         """Run on agent end."""
         # Final Answer
-        if self._current_loop and (self._current_loop.status == 'llm_end' or self._current_loop.status == 'agent_action'):
+        if self._current_loop and self._current_loop.status in [
+            'llm_end',
+            'agent_action',
+        ]:
             self._current_loop.status = 'agent_finish'
             self._current_loop.completed = True
             self._current_loop.completed_at = time.perf_counter()

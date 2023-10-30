@@ -22,14 +22,10 @@ class VectorService:
             }
         )
 
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'high_quality'):
             index.add_texts([document], duplicate_check=True)
 
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'economy'):
             if keywords and len(keywords) > 0:
                 index.create_segment_keywords(segment.index_node_id, keywords)
             else:
@@ -51,14 +47,10 @@ class VectorService:
             )
             documents.append(document)
 
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'high_quality'):
             index.add_texts(documents, duplicate_check=True)
 
-        # save keyword index
-        keyword_index = IndexBuilder.get_index(dataset, 'economy')
-        if keyword_index:
+        if keyword_index := IndexBuilder.get_index(dataset, 'economy'):
             keyword_index.multi_create_segment_keywords(pre_segment_data_list)
 
     @classmethod

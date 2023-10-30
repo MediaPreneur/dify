@@ -9,9 +9,7 @@ from extensions.ext_database import db
 def handle(sender, **kwargs):
     message = sender
     conversation = kwargs.get('conversation')
-    is_first_message = kwargs.get('is_first_message')
-
-    if is_first_message:
+    if is_first_message := kwargs.get('is_first_message'):
         if conversation.mode == 'chat':
             app_model = conversation.app
             if not app_model:
@@ -22,7 +20,7 @@ def handle(sender, **kwargs):
                 name = LLMGenerator.generate_conversation_name(app_model.tenant_id, message.query, message.answer)
 
                 if len(name) > 75:
-                    name = name[:75] + '...'
+                    name = f'{name[:75]}...'
 
                 conversation.name = name
             except:

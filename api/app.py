@@ -57,11 +57,10 @@ def create_app(test_config=None) -> Flask:
 
     if test_config:
         app.config.from_object(test_config)
+    elif config_type == "CLOUD":
+        app.config.from_object(CloudEditionConfig())
     else:
-        if config_type == "CLOUD":
-            app.config.from_object(CloudEditionConfig())
-        else:
-            app.config.from_object(Config())
+        app.config.from_object(Config())
 
     app.secret_key = app.config['SECRET_KEY']
 
@@ -94,22 +93,21 @@ def initialize_extensions(app):
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint == 'console':
-        # Check if the user_id contains a dot, indicating the old format
-        auth_header = request.headers.get('Authorization', '')
-        if ' ' not in auth_header:
-            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-        auth_scheme, auth_token = auth_header.split(None, 1)
-        auth_scheme = auth_scheme.lower()
-        if auth_scheme != 'bearer':
-            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-        
-        decoded = PassportService().verify(auth_token)
-        user_id = decoded.get('user_id')
-
-        return AccountService.load_user(user_id)
-    else:
+    if request.blueprint != 'console':
         return None
+    # Check if the user_id contains a dot, indicating the old format
+    auth_header = request.headers.get('Authorization', '')
+    if ' ' not in auth_header:
+        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+    auth_scheme, auth_token = auth_header.split(None, 1)
+    auth_scheme = auth_scheme.lower()
+    if auth_scheme != 'bearer':
+        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+
+    decoded = PassportService().verify(auth_token)
+    user_id = decoded.get('user_id')
+
+    return AccountService.load_user(user_id)
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():

@@ -104,26 +104,25 @@ class ChatGLMProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'api_base': None
-                }
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
+            return {}
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'api_base': None
+            }
 
-            if credentials['api_base']:
-                credentials['api_base'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_base']
-                )
+        if credentials['api_base']:
+            credentials['api_base'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_base']
+            )
 
-                if obfuscated:
-                    credentials['api_base'] = encrypter.obfuscated_token(credentials['api_base'])
+            if obfuscated:
+                credentials['api_base'] = encrypter.obfuscated_token(credentials['api_base'])
 
-            return credentials
-
-        return {}
+        return credentials
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

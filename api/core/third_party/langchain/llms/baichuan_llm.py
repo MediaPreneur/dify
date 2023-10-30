@@ -55,7 +55,7 @@ class BaichuanModelAPI(BaseModel):
 
         headers = {
             "Content-Type": "application/json",
-            "Authorization": "Bearer " + self.api_key,
+            "Authorization": f"Bearer {self.api_key}",
             "X-BC-Request-Id": "your requestId",
             "X-BC-Timestamp": str(time_stamp),
             "X-BC-Signature": signature,
@@ -67,22 +67,20 @@ class BaichuanModelAPI(BaseModel):
         if not response.ok:
             raise ValueError(f"HTTP {response.status_code} error: {response.text}")
 
-        if not stream:
-            json_response = response.json()
-            if json_response['code'] != 0:
-                raise ValueError(
-                    f"API {json_response['code']}"
-                    f" error: {json_response['msg']}"
-                )
-            return json_response
-        else:
+        if stream:
             return response
+        json_response = response.json()
+        if json_response['code'] != 0:
+            raise ValueError(
+                f"API {json_response['code']}"
+                f" error: {json_response['msg']}"
+            )
+        return json_response
 
     def _calculate_md5(self, input_string):
         md5 = hashlib.md5()
         md5.update(input_string.encode('utf-8'))
-        encrypted = md5.hexdigest()
-        return encrypted
+        return md5.hexdigest()
 
 
 class BaichuanChatLLM(BaseChatModel):
@@ -160,12 +158,14 @@ class BaichuanChatLLM(BaseChatModel):
     def _convert_message_to_dict(self, message: BaseMessage) -> dict:
         if isinstance(message, ChatMessage):
             message_dict = {"role": message.role, "content": message.content}
-        elif isinstance(message, HumanMessage):
+        elif (
+            isinstance(message, HumanMessage)
+            or not isinstance(message, AIMessage)
+            and isinstance(message, SystemMessage)
+        ):
             message_dict = {"role": "user", "content": message.content}
         elif isinstance(message, AIMessage):
             message_dict = {"role": "assistant", "content": message.content}
-        elif isinstance(message, SystemMessage):
-            message_dict = {"role": "user", "content": message.content}
         else:
             raise ValueError(f"Got unknown type {message}")
         return message_dict
@@ -302,7 +302,7 @@ class BaichuanChatLLM(BaseChatModel):
         Returns:
             The sum of the number of tokens across the messages.
         """
-        return sum([self.get_num_tokens(m.content) for m in messages])
+        return sum(self.get_num_tokens(m.content) for m in messages)
 
     def _combine_llm_outputs(self, llm_outputs: List[Optional[dict]]) -> dict:
         token_usage: dict = {}

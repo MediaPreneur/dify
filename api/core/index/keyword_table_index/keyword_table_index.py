@@ -123,12 +123,14 @@ class KeywordTableIndex(BaseIndex):
 
         documents = []
         for chunk_index in sorted_chunk_indices:
-            segment = db.session.query(DocumentSegment).filter(
-                DocumentSegment.dataset_id == self.dataset.id,
-                DocumentSegment.index_node_id == chunk_index
-            ).first()
-
-            if segment:
+            if (
+                segment := db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.dataset_id == self.dataset.id,
+                    DocumentSegment.index_node_id == chunk_index,
+                )
+                .first()
+            ):
                 documents.append(Document(
                     page_content=segment.content,
                     metadata={
@@ -141,14 +143,12 @@ class KeywordTableIndex(BaseIndex):
         return documents
 
     def delete(self) -> None:
-        dataset_keyword_table = self.dataset.dataset_keyword_table
-        if dataset_keyword_table:
+        if dataset_keyword_table := self.dataset.dataset_keyword_table:
             db.session.delete(dataset_keyword_table)
             db.session.commit()
 
     def delete_by_group_id(self, group_id: str) -> None:
-        dataset_keyword_table = self.dataset.dataset_keyword_table
-        if dataset_keyword_table:
+        if dataset_keyword_table := self.dataset.dataset_keyword_table:
             db.session.delete(dataset_keyword_table)
             db.session.commit()
 
@@ -165,8 +165,7 @@ class KeywordTableIndex(BaseIndex):
         db.session.commit()
 
     def _get_dataset_keyword_table(self) -> Optional[dict]:
-        dataset_keyword_table = self.dataset.dataset_keyword_table
-        if dataset_keyword_table:
+        if dataset_keyword_table := self.dataset.dataset_keyword_table:
             if dataset_keyword_table.keyword_table_dict:
                 return dataset_keyword_table.keyword_table_dict['__data__']['table']
         else:
@@ -232,11 +231,14 @@ class KeywordTableIndex(BaseIndex):
         return sorted_chunk_indices[: k]
 
     def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]):
-        document_segment = db.session.query(DocumentSegment).filter(
-            DocumentSegment.dataset_id == dataset_id,
-            DocumentSegment.index_node_id == node_id
-        ).first()
-        if document_segment:
+        if (
+            document_segment := db.session.query(DocumentSegment)
+            .filter(
+                DocumentSegment.dataset_id == dataset_id,
+                DocumentSegment.index_node_id == node_id,
+            )
+            .first()
+        ):
             document_segment.keywords = keywords
             db.session.commit()
 
@@ -295,6 +297,4 @@ class KeywordTableRetriever(BaseRetriever, BaseModel):
 
 class SetEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, set):
-            return list(obj)
-        return super().default(obj)
+        return list(obj) if isinstance(obj, set) else super().default(obj)

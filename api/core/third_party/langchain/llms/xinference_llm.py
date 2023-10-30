@@ -77,18 +77,16 @@ class XinferenceLLM(LLM):
                 generate_config["stop"] = stop
 
             if generate_config and generate_config.get("stream"):
-                combined_text_output = ""
-                for token in self._stream_generate(
-                    model=model,
-                    prompt=prompt,
-                    run_manager=run_manager,
-                    generate_config=generate_config,
-                ):
-                    combined_text_output += token
-                return combined_text_output
-            else:
-                completion = model.chat(prompt=prompt, generate_config=generate_config)
-                return completion["choices"][0]["message"]["content"]
+                return "".join(
+                    self._stream_generate(
+                        model=model,
+                        prompt=prompt,
+                        run_manager=run_manager,
+                        generate_config=generate_config,
+                    )
+                )
+            completion = model.chat(prompt=prompt, generate_config=generate_config)
+            return completion["choices"][0]["message"]["content"]
         elif isinstance(model, RESTfulGenerateModelHandle):
             generate_config: "LlamaCppGenerateConfig" = kwargs.get(
                 "generate_config", {}
@@ -98,35 +96,32 @@ class XinferenceLLM(LLM):
                 generate_config["stop"] = stop
 
             if generate_config and generate_config.get("stream"):
-                combined_text_output = ""
-                for token in self._stream_generate(
-                    model=model,
-                    prompt=prompt,
-                    run_manager=run_manager,
-                    generate_config=generate_config,
-                ):
-                    combined_text_output += token
-                return combined_text_output
-
-            else:
-                completion = model.generate(
-                    prompt=prompt, generate_config=generate_config
+                return "".join(
+                    self._stream_generate(
+                        model=model,
+                        prompt=prompt,
+                        run_manager=run_manager,
+                        generate_config=generate_config,
+                    )
                 )
-                return completion["choices"][0]["text"]
+            completion = model.generate(
+                prompt=prompt, generate_config=generate_config
+            )
+            return completion["choices"][0]["text"]
         elif isinstance(model, RESTfulChatglmCppChatModelHandle):
             generate_config: "ChatglmCppGenerateConfig" = kwargs.get(
                 "generate_config", {}
             )
 
             if generate_config and generate_config.get("stream"):
-                combined_text_output = ""
-                for token in self._stream_generate(
-                    model=model,
-                    prompt=prompt,
-                    run_manager=run_manager,
-                    generate_config=generate_config,
-                ):
-                    combined_text_output += token
+                combined_text_output = "".join(
+                    self._stream_generate(
+                        model=model,
+                        prompt=prompt,
+                        run_manager=run_manager,
+                        generate_config=generate_config,
+                    )
+                )
                 completion = combined_text_output
             else:
                 completion = model.chat(prompt=prompt, generate_config=generate_config)
@@ -178,8 +173,7 @@ class XinferenceLLM(LLM):
 
         for chunk in streaming_response:
             if isinstance(chunk, dict):
-                choices = chunk.get("choices", [])
-                if choices:
+                if choices := chunk.get("choices", []):
                     choice = choices[0]
                     if isinstance(choice, dict):
                         if "text" in choice:

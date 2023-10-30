@@ -63,13 +63,13 @@ class DatasetService:
 
     @staticmethod
     def get_process_rules(dataset_id):
-        # get the latest process rule
-        dataset_process_rule = db.session.query(DatasetProcessRule). \
-            filter(DatasetProcessRule.dataset_id == dataset_id). \
-            order_by(DatasetProcessRule.created_at.desc()). \
-            limit(1). \
-            one_or_none()
-        if dataset_process_rule:
+        if (
+            dataset_process_rule := db.session.query(DatasetProcessRule)
+            .filter(DatasetProcessRule.dataset_id == dataset_id)
+            .order_by(DatasetProcessRule.created_at.desc())
+            .limit(1)
+            .one_or_none()
+        ):
             mode = dataset_process_rule.mode
             rules = dataset_process_rule.rules_dict
         else:
@@ -114,10 +114,7 @@ class DatasetService:
         dataset = Dataset.query.filter_by(
             id=dataset_id
         ).first()
-        if dataset is None:
-            return None
-        else:
-            return dataset
+        return None if dataset is None else dataset
 
     @staticmethod
     def check_dataset_model_setting(dataset):
@@ -130,8 +127,8 @@ class DatasetService:
                 )
             except LLMBadRequestError:
                 raise ValueError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ValueError(f"The dataset in unavailable, due to: "
                                  f"{ex.description}")
@@ -165,8 +162,8 @@ class DatasetService:
                     filtered_data['collection_binding_id'] = dataset_collection_binding.id
                 except LLMBadRequestError:
                     raise ValueError(
-                        f"No Embedding Model available. Please configure a valid provider "
-                        f"in the Settings -> Model Provider.")
+                        'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                    )
                 except ProviderTokenNotInitError as ex:
                     raise ValueError(ex.description)
 
@@ -335,53 +332,49 @@ class DocumentService:
 
     @staticmethod
     def get_document(dataset_id: str, document_id: str) -> Optional[Document]:
-        document = db.session.query(Document).filter(
-            Document.id == document_id,
-            Document.dataset_id == dataset_id
-        ).first()
-
-        return document
+        return (
+            db.session.query(Document)
+            .filter(Document.id == document_id, Document.dataset_id == dataset_id)
+            .first()
+        )
 
     @staticmethod
     def get_document_by_id(document_id: str) -> Optional[Document]:
-        document = db.session.query(Document).filter(
-            Document.id == document_id
-        ).first()
-
-        return document
+        return (
+            db.session.query(Document).filter(Document.id == document_id).first()
+        )
 
     @staticmethod
     def get_document_by_dataset_id(dataset_id: str) -> List[Document]:
-        documents = db.session.query(Document).filter(
-            Document.dataset_id == dataset_id,
-            Document.enabled == True
-        ).all()
-
-        return documents
+        return (
+            db.session.query(Document)
+            .filter(Document.dataset_id == dataset_id, Document.enabled == True)
+            .all()
+        )
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> List[Document]:
-        documents = db.session.query(Document).filter(
-            Document.batch == batch,
-            Document.dataset_id == dataset_id,
-            Document.tenant_id == current_user.current_tenant_id
-        ).all()
-
-        return documents
+        return (
+            db.session.query(Document)
+            .filter(
+                Document.batch == batch,
+                Document.dataset_id == dataset_id,
+                Document.tenant_id == current_user.current_tenant_id,
+            )
+            .all()
+        )
 
     @staticmethod
     def get_document_file_detail(file_id: str):
-        file_detail = db.session.query(UploadFile). \
-            filter(UploadFile.id == file_id). \
-            one_or_none()
-        return file_detail
+        return (
+            db.session.query(UploadFile)
+            .filter(UploadFile.id == file_id)
+            .one_or_none()
+        )
 
     @staticmethod
     def check_archived(document):
-        if document.archived:
-            return True
-        else:
-            return False
+        return bool(document.archived)
 
     @staticmethod
     def delete_document(document):
@@ -403,7 +396,7 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # set document paused flag
-        indexing_cache_key = 'document_{}_is_paused'.format(document.id)
+        indexing_cache_key = f'document_{document.id}_is_paused'
         redis_client.setnx(indexing_cache_key, "True")
 
     @staticmethod
@@ -418,15 +411,18 @@ class DocumentService:
         db.session.add(document)
         db.session.commit()
         # delete paused flag
-        indexing_cache_key = 'document_{}_is_paused'.format(document.id)
+        indexing_cache_key = f'document_{document.id}_is_paused'
         redis_client.delete(indexing_cache_key)
         # trigger async task
         recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
     def get_documents_position(dataset_id):
-        document = Document.query.filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
-        if document:
+        if (
+            document := Document.query.filter_by(dataset_id=dataset_id)
+            .order_by(Document.position.desc())
+            .first()
+        ):
             return document.position + 1
         else:
             return 1
@@ -436,7 +432,6 @@ class DocumentService:
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
 
-        # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
             if 'original_document_id' not in document_data or not document_data['original_document_id']:
                 count = 0
@@ -458,7 +453,7 @@ class DocumentService:
 
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
-                    or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
+                        or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is required")
 
             dataset.indexing_technique = document_data["indexing_technique"]
@@ -578,7 +573,7 @@ class DocumentService:
                         else:
                             exist_document.pop(page['page_id'])
                 # delete not selected documents
-                if len(exist_document) > 0:
+                if exist_document:
                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
             db.session.commit()
 
@@ -592,7 +587,7 @@ class DocumentService:
                        document_language: str, data_source_info: dict, created_from: str, position: int,
                        account: Account,
                        name: str, batch: str):
-        document = Document(
+        return Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
@@ -604,17 +599,17 @@ class DocumentService:
             created_from=created_from,
             created_by=account.id,
             doc_form=document_form,
-            doc_language=document_language
+            doc_language=document_language,
         )
-        return document
 
     @staticmethod
     def get_tenant_documents_count():
-        documents_count = Document.query.filter(Document.completed_at.isnot(None),
-                                                Document.enabled == True,
-                                                Document.archived == False,
-                                                Document.tenant_id == current_user.current_tenant_id).count()
-        return documents_count
+        return Document.query.filter(
+            Document.completed_at.isnot(None),
+            Document.enabled == True,
+            Document.archived == False,
+            Document.tenant_id == current_user.current_tenant_id,
+        ).count()
 
     @staticmethod
     def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
@@ -761,26 +756,29 @@ class DocumentService:
 
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
-        dataset.name = cut_name + '...'
-        dataset.description = 'useful for when you want to answer queries about the ' + documents[0].name
+        dataset.name = f'{cut_name}...'
+        dataset.description = f'useful for when you want to answer queries about the {documents[0].name}'
         db.session.commit()
 
         return dataset, documents, batch
 
     @classmethod
-    def  document_create_args_validate(cls, args: dict):
+    def document_create_args_validate(cls, args: dict):
         if 'original_document_id' not in args or not args['original_document_id']:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)
         else:
-            if ('data_source' not in args and not args['data_source']) \
-                    and ('process_rule' not in args and not args['process_rule']):
+            if (
+                'data_source' not in args
+                and not args['data_source']
+                and 'process_rule' not in args
+                and not args['process_rule']
+            ):
                 raise ValueError("Data source or Process rule is required")
-            else:
-                if 'data_source' in args and args['data_source']:
-                    DocumentService.data_source_args_validate(args)
-                if 'process_rule' in args and args['process_rule']:
-                    DocumentService.process_rule_args_validate(args)
+            if 'data_source' in args and args['data_source']:
+                DocumentService.data_source_args_validate(args)
+            if 'process_rule' in args and args['process_rule']:
+                DocumentService.process_rule_args_validate(args)
 
     @classmethod
     def data_source_args_validate(cls, args: dict):
@@ -1012,8 +1010,11 @@ class SegmentService:
             segment_document.status = 'error'
             segment_document.error = str(e)
             db.session.commit()
-        segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
-        return segment
+        return (
+            db.session.query(DocumentSegment)
+            .filter(DocumentSegment.id == segment_document.id)
+            .first()
+        )
 
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
@@ -1077,7 +1078,7 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
+        indexing_cache_key = f'segment_{segment.id}_indexing'
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
@@ -1138,7 +1139,7 @@ class SegmentService:
 
     @classmethod
     def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
-        indexing_cache_key = 'segment_{}_delete_indexing'.format(segment.id)
+        indexing_cache_key = f'segment_{segment.id}_delete_indexing'
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")

@@ -92,10 +92,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         full_inputs = self.get_full_inputs(intermediate_steps, **kwargs)
         prompts, _ = self.llm_chain.prep_prompts(input_list=[self.llm_chain.prep_inputs(full_inputs)])
 
-        messages = []
-        if prompts:
-            messages = prompts[0].to_messages()
-
+        messages = prompts[0].to_messages() if prompts else []
         rest_tokens = self.get_message_rest_tokens(self.llm_chain.model_instance, messages)
         if rest_tokens < 0:
             full_inputs = self.summarize_messages(intermediate_steps, **kwargs)
@@ -119,18 +116,16 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
                                           "I don't know how to respond to that."}, "")
 
     def summarize_messages(self, intermediate_steps: List[Tuple[AgentAction, str]], **kwargs):
-        if len(intermediate_steps) >= 2 and self.summary_model_instance:
-            should_summary_intermediate_steps = intermediate_steps[self.moving_summary_index:-1]
-            should_summary_messages = [AIMessage(content=observation)
-                                       for _, observation in should_summary_intermediate_steps]
-            if self.moving_summary_index == 0:
-                should_summary_messages.insert(0, HumanMessage(content=kwargs.get("input")))
+        if len(intermediate_steps) < 2 or not self.summary_model_instance:
+            raise ExceededLLMTokensLimitError("Exceeded LLM tokens limit, stopped.")
 
-            self.moving_summary_index = len(intermediate_steps)
-        else:
-            error_msg = "Exceeded LLM tokens limit, stopped."
-            raise ExceededLLMTokensLimitError(error_msg)
+        should_summary_intermediate_steps = intermediate_steps[self.moving_summary_index:-1]
+        should_summary_messages = [AIMessage(content=observation)
+                                   for _, observation in should_summary_intermediate_steps]
+        if self.moving_summary_index == 0:
+            should_summary_messages.insert(0, HumanMessage(content=kwargs.get("input")))
 
+        self.moving_summary_index = len(intermediate_steps)
         if self.moving_summary_buffer and 'chat_history' in kwargs:
             kwargs["chat_history"].pop()
 
@@ -172,7 +167,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             args_schema = re.sub("}", "}}}}", re.sub("{", "{{{{", str(tool.args)))
             tool_strings.append(f"{tool.name}: {tool.description}, args: {args_schema}")
         formatted_tools = "\n".join(tool_strings)
-        tool_names = ", ".join([('"' + tool.name + '"') for tool in tools])
+        tool_names = ", ".join([f'"{tool.name}"' for tool in tools])
         format_instructions = format_instructions.format(tool_names=tool_names)
         template = "\n\n".join([prefix, formatted_tools, format_instructions, suffix])
         if input_variables is None:
@@ -227,18 +222,14 @@ Thought: {agent_scratchpad}
 
         if not isinstance(agent_scratchpad, str):
             raise ValueError("agent_scratchpad should be of type string.")
-        if agent_scratchpad:
-            llm_chain = cast(LLMChain, self.llm_chain)
-            if llm_chain.model_instance.model_mode == ModelMode.CHAT:
-                return (
-                    f"This was your previous work "
-                    f"(but I haven't seen any of it! I only see what "
-                    f"you return as final answer):\n{agent_scratchpad}"
-                )
-            else:
-                return agent_scratchpad
-        else:
+        if not agent_scratchpad:
             return agent_scratchpad
+        llm_chain = cast(LLMChain, self.llm_chain)
+        return (
+            f"This was your previous work (but I haven't seen any of it! I only see what you return as final answer):\n{agent_scratchpad}"
+            if llm_chain.model_instance.model_mode == ModelMode.CHAT
+            else agent_scratchpad
+        )
 
     @classmethod
     def from_llm_and_tools(
@@ -284,6 +275,6 @@ Thought: {agent_scratchpad}
         return cls(
             llm_chain=llm_chain,
             allowed_tools=tool_names,
-            output_parser=_output_parser,
-            **kwargs,
+            _output_parser=_output_parser,
+            **kwargs
         )

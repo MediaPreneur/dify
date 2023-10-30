@@ -22,8 +22,11 @@ class CacheEmbedding(Embeddings):
         embedding_queue_texts = []
         for text in texts:
             hash = helper.generate_text_hash(text)
-            embedding = db.session.query(Embedding).filter_by(model_name=self._embeddings.name, hash=hash).first()
-            if embedding:
+            if (
+                embedding := db.session.query(Embedding)
+                .filter_by(model_name=self._embeddings.name, hash=hash)
+                .first()
+            ):
                 text_embeddings.append(embedding.get_embedding())
             else:
                 embedding_queue_texts.append(text)
@@ -62,8 +65,11 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding = db.session.query(Embedding).filter_by(model_name=self._embeddings.name, hash=hash).first()
-        if embedding:
+        if (
+            embedding := db.session.query(Embedding)
+            .filter_by(model_name=self._embeddings.name, hash=hash)
+            .first()
+        ):
             return embedding.get_embedding()
 
         try:

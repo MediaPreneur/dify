@@ -50,10 +50,12 @@ class SensitiveWordAvoidanceChain(Chain):
         return [self.output_key]
 
     def _check_sensitive_word(self, text: str) -> bool:
-        for word in self.sensitive_word_avoidance_rule.extra_params.get('sensitive_words', []):
-            if word in text:
-                return False
-        return True
+        return all(
+            word not in text
+            for word in self.sensitive_word_avoidance_rule.extra_params.get(
+                'sensitive_words', []
+            )
+        )
 
     def _check_moderation(self, text: str) -> bool:
         moderation_model_instance = ModelFactory.get_moderation_model(

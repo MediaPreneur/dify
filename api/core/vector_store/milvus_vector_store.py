@@ -21,21 +21,18 @@ class MilvusVectorStore(Milvus):
         return len(result) > 0
 
     def get_ids_by_document_id(self, document_id: str):
-        result = self.col.query(
+        if result := self.col.query(
             expr=f'metadata["document_id"] == "{document_id}"',
-            output_fields=["id"]
-        )
-        if result:
+            output_fields=["id"],
+        ):
             return [item["id"] for item in result]
         else:
             return None
 
     def get_ids_by_doc_ids(self, doc_ids: list):
-        result = self.col.query(
-            expr=f'metadata["doc_id"] in {doc_ids}',
-            output_fields=["id"]
-        )
-        if result:
+        if result := self.col.query(
+            expr=f'metadata["doc_id"] in {doc_ids}', output_fields=["id"]
+        ):
             return [item["id"] for item in result]
         else:
             return None

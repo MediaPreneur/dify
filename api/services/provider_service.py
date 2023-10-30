@@ -30,9 +30,9 @@ class ProviderService:
 
         for model_provider_name, model_provider_rule in model_provider_rules.items():
             if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
-                    and 'system_config' in model_provider_rule and model_provider_rule['system_config'] \
-                    and 'supported_quota_types' in model_provider_rule['system_config'] \
-                    and 'trial' in model_provider_rule['system_config']['supported_quota_types']:
+                        and 'system_config' in model_provider_rule and model_provider_rule['system_config'] \
+                        and 'supported_quota_types' in model_provider_rule['system_config'] \
+                        and 'trial' in model_provider_rule['system_config']['supported_quota_types']:
                 ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
 
         configurable_model_provider_names = [
@@ -44,7 +44,7 @@ class ProviderService:
 
         # get all providers for the tenant
         providers = db.session.query(Provider) \
-            .filter(
+                .filter(
             Provider.tenant_id == tenant_id,
             Provider.provider_name.in_(model_provider_names),
             Provider.is_valid == True
@@ -56,7 +56,7 @@ class ProviderService:
 
         # get all configurable provider models for the tenant
         provider_models = db.session.query(ProviderModel) \
-            .filter(
+                .filter(
             ProviderModel.tenant_id == tenant_id,
             ProviderModel.provider_name.in_(configurable_model_provider_names),
             ProviderModel.is_valid == True
@@ -68,7 +68,7 @@ class ProviderService:
 
         # get all preferred provider type for the tenant
         preferred_provider_types = db.session.query(TenantPreferredModelProvider) \
-            .filter(
+                .filter(
             TenantPreferredModelProvider.tenant_id == tenant_id,
             TenantPreferredModelProvider.provider_name.in_(model_provider_names)
         ).all()
@@ -97,7 +97,7 @@ class ProviderService:
                 for quota_type_enum in ProviderQuotaType:
                     quota_type = quota_type_enum.value
                     if quota_type in model_provider_rule['system_config']['supported_quota_types']:
-                        key = ProviderType.SYSTEM.value + ':' + quota_type
+                        key = f'{ProviderType.SYSTEM.value}:{quota_type}'
                         provider_parameter_dict[key] = {
                             "provider_name": model_provider_name,
                             "provider_type": ProviderType.SYSTEM.value,
@@ -134,31 +134,35 @@ class ProviderService:
                         provider_parameter_dict[key]['quota_used'] = provider.quota_used
                         provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
                         provider_parameter_dict[key]['last_used'] = int(provider.last_used.timestamp()) \
-                            if provider.last_used else None
+                                if provider.last_used else None
                 elif provider.provider_type == ProviderType.CUSTOM.value \
-                        and ProviderType.CUSTOM.value in provider_parameter_dict:
+                            and ProviderType.CUSTOM.value in provider_parameter_dict:
                     # if custom
                     key = ProviderType.CUSTOM.value
                     provider_parameter_dict[key]['last_used'] = int(provider.last_used.timestamp()) \
-                            if provider.last_used else None
+                                if provider.last_used else None
                     provider_parameter_dict[key]['is_valid'] = provider.is_valid
 
                     if model_provider_rule['model_flexibility'] == 'fixed':
                         provider_parameter_dict[key]['config'] = model_provider_class(provider=provider) \
-                            .get_provider_credentials(obfuscated=True)
+                                .get_provider_credentials(obfuscated=True)
                     else:
-                        models = []
                         provider_models = provider_name_to_provider_model_dict[model_provider_name]
-                        for provider_model in provider_models:
-                            models.append({
+                        models = [
+                            {
                                 "model_name": provider_model.model_name,
                                 "model_type": provider_model.model_type,
-                                "config": model_provider_class(provider=provider) \
-                                    .get_model_credentials(provider_model.model_name,
-                                                           ModelType.value_of(provider_model.model_type),
-                                                           obfuscated=True),
-                                "is_valid": provider_model.is_valid
-                            })
+                                "config": model_provider_class(
+                                    provider=provider
+                                ).get_model_credentials(
+                                    provider_model.model_name,
+                                    ModelType.value_of(provider_model.model_type),
+                                    obfuscated=True,
+                                ),
+                                "is_valid": provider_model.is_valid,
+                            }
+                            for provider_model in provider_models
+                        ]
                         provider_parameter_dict[key]['models'] = models
 
             provider_config_dict['providers'] = list(provider_parameter_dict.values())
@@ -203,7 +207,7 @@ class ProviderService:
 
         # get provider
         provider = db.session.query(Provider) \
-            .filter(
+                .filter(
             Provider.tenant_id == tenant_id,
             Provider.provider_name == provider_name,
             Provider.provider_type == ProviderType.CUSTOM.value
@@ -217,7 +221,6 @@ class ProviderService:
             provider.encrypted_config = json.dumps(encrypted_config)
             provider.is_valid = True
             provider.updated_at = datetime.datetime.utcnow()
-            db.session.commit()
         else:
             provider = Provider(
                 tenant_id=tenant_id,
@@ -227,7 +230,8 @@ class ProviderService:
                 is_valid=True
             )
             db.session.add(provider)
-            db.session.commit()
+
+        db.session.commit()
 
     def delete_custom_provider(self, tenant_id: str, provider_name: str) -> None:
         """
@@ -237,15 +241,15 @@ class ProviderService:
         :param provider_name:
         :return:
         """
-        # get provider
-        provider = db.session.query(Provider) \
+        if (
+            provider := db.session.query(Provider)
             .filter(
-            Provider.tenant_id == tenant_id,
-            Provider.provider_name == provider_name,
-            Provider.provider_type == ProviderType.CUSTOM.value
-        ).first()
-
-        if provider:
+                Provider.tenant_id == tenant_id,
+                Provider.provider_name == provider_name,
+                Provider.provider_type == ProviderType.CUSTOM.value,
+            )
+            .first()
+        ):
             try:
                 self.switch_preferred_provider(tenant_id, provider_name, ProviderType.SYSTEM.value)
             except ValueError:
@@ -305,7 +309,7 @@ class ProviderService:
 
         # get provider
         provider = db.session.query(Provider) \
-            .filter(
+                .filter(
             Provider.tenant_id == tenant_id,
             Provider.provider_name == provider_name,
             Provider.provider_type == ProviderType.CUSTOM.value
@@ -333,19 +337,18 @@ class ProviderService:
             config
         )
 
-        # get provider model
-        provider_model = db.session.query(ProviderModel) \
+        if (
+            provider_model := db.session.query(ProviderModel)
             .filter(
-            ProviderModel.tenant_id == tenant_id,
-            ProviderModel.provider_name == provider_name,
-            ProviderModel.model_name == model_name,
-            ProviderModel.model_type == model_type
-        ).first()
-
-        if provider_model:
+                ProviderModel.tenant_id == tenant_id,
+                ProviderModel.provider_name == provider_name,
+                ProviderModel.model_name == model_name,
+                ProviderModel.model_type == model_type,
+            )
+            .first()
+        ):
             provider_model.encrypted_config = json.dumps(encrypted_config)
             provider_model.is_valid = True
-            db.session.commit()
         else:
             provider_model = ProviderModel(
                 tenant_id=tenant_id,
@@ -356,7 +359,7 @@ class ProviderService:
                 is_valid=True
             )
             db.session.add(provider_model)
-            db.session.commit()
+        db.session.commit()
 
     def delete_custom_provider_model(self,
                                      tenant_id: str,
@@ -372,16 +375,16 @@ class ProviderService:
         :param model_type:
         :return:
         """
-        # get provider model
-        provider_model = db.session.query(ProviderModel) \
+        if (
+            provider_model := db.session.query(ProviderModel)
             .filter(
-            ProviderModel.tenant_id == tenant_id,
-            ProviderModel.provider_name == provider_name,
-            ProviderModel.model_name == model_name,
-            ProviderModel.model_type == model_type
-        ).first()
-
-        if provider_model:
+                ProviderModel.tenant_id == tenant_id,
+                ProviderModel.provider_name == provider_name,
+                ProviderModel.model_name == model_name,
+                ProviderModel.model_type == model_type,
+            )
+            .first()
+        ):
             db.session.delete(provider_model)
             db.session.commit()
 
@@ -406,14 +409,16 @@ class ProviderService:
         if not model_provider.is_provider_type_system_supported():
             return
 
-        # get preferred provider
-        preferred_model_provider = db.session.query(TenantPreferredModelProvider) \
+        if (
+            preferred_model_provider := db.session.query(
+                TenantPreferredModelProvider
+            )
             .filter(
-            TenantPreferredModelProvider.tenant_id == tenant_id,
-            TenantPreferredModelProvider.provider_name == provider_name
-        ).first()
-
-        if preferred_model_provider:
+                TenantPreferredModelProvider.tenant_id == tenant_id,
+                TenantPreferredModelProvider.provider_name == provider_name,
+            )
+            .first()
+        ):
             preferred_model_provider.preferred_provider_type = preferred_provider_type
         else:
             preferred_model_provider = TenantPreferredModelProvider(
@@ -498,8 +503,7 @@ class ProviderService:
 
         return valid_model_list
 
-    def get_model_parameter_rules(self, tenant_id: str, model_provider_name: str, model_name: str, model_type: str) \
-            -> ModelKwargsRules:
+    def get_model_parameter_rules(self, tenant_id: str, model_provider_name: str, model_name: str, model_type: str) -> ModelKwargsRules:
         """
         get model parameter rules.
         It depends on preferred provider in use.
@@ -510,19 +514,19 @@ class ProviderService:
         :param model_type:
         :return:
         """
-        # get model provider
-        model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
-        if not model_provider:
+        if model_provider := ModelProviderFactory.get_preferred_model_provider(
+            tenant_id, model_provider_name
+        ):
+            # get model parameter rules
+            return model_provider.get_model_parameter_rules(model_name, ModelType.value_of(model_type))
+        else:
             # get empty model provider
             return ModelKwargsRules()
-
-        # get model parameter rules
-        return model_provider.get_model_parameter_rules(model_name, ModelType.value_of(model_type))
 
     def free_quota_submit(self, tenant_id: str, provider_name: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
-        api_url = api_base_url + '/api/v1/providers/apply'
+        api_url = f'{api_base_url}/api/v1/providers/apply'
 
         headers = {
             'Content-Type': 'application/json',
@@ -554,7 +558,7 @@ class ProviderService:
     def free_quota_qualification_verify(self, tenant_id: str, provider_name: str, token: Optional[str]):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
-        api_url = api_base_url + '/api/v1/providers/qualification-verify'
+        api_url = f'{api_base_url}/api/v1/providers/qualification-verify'
 
         headers = {
             'Content-Type': 'application/json',

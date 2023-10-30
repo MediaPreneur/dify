@@ -73,9 +73,7 @@ class ZhipuModelAPI(BaseModel):
         try:
             return jwt_token.generate_token(self.api_key)
         except Exception:
-            raise ValueError(
-                f"Your api_key is invalid, please check it."
-            )
+            raise ValueError("Your api_key is invalid, please check it.")
 
 
 class ZhipuAIChatLLM(BaseChatModel):
@@ -148,12 +146,14 @@ class ZhipuAIChatLLM(BaseChatModel):
     def _convert_message_to_dict(self, message: BaseMessage) -> dict:
         if isinstance(message, ChatMessage):
             message_dict = {"role": message.role, "content": message.content}
-        elif isinstance(message, HumanMessage):
+        elif (
+            isinstance(message, HumanMessage)
+            or not isinstance(message, AIMessage)
+            and isinstance(message, SystemMessage)
+        ):
             message_dict = {"role": "user", "content": message.content}
         elif isinstance(message, AIMessage):
             message_dict = {"role": "assistant", "content": message.content}
-        elif isinstance(message, SystemMessage):
-            message_dict = {"role": "user", "content": message.content}
         else:
             raise ValueError(f"Got unknown type {message}")
         return message_dict
@@ -235,7 +235,7 @@ class ZhipuAIChatLLM(BaseChatModel):
                 yield ChatGenerationChunk(message=AIMessageChunk(content=event.data))
                 if run_manager:
                     run_manager.on_llm_new_token(event.data)
-            elif event.event == "error" or event.event == "interrupted":
+            elif event.event in ["error", "interrupted"]:
                 raise ValueError(
                     f"{event.data}"
                 )
@@ -298,7 +298,7 @@ class ZhipuAIChatLLM(BaseChatModel):
         Returns:
             The sum of the number of tokens across the messages.
         """
-        return sum([self.get_num_tokens(m.content) for m in messages])
+        return sum(self.get_num_tokens(m.content) for m in messages)
 
     def _combine_llm_outputs(self, llm_outputs: List[Optional[dict]]) -> dict:
         overall_token_usage: dict = {}

@@ -100,10 +100,9 @@ class EnhanceAzureOpenAI(AzureOpenAI):
                                 logprobs=stream_resp["choices"][0]["logprobs"],
                             )
                         _update_response(response, stream_resp)
-                choices.extend(response["choices"])
             else:
                 response = completion_with_retry(self, prompt=_prompts, **params)
-                choices.extend(response["choices"])
+            choices.extend(response["choices"])
             if not self.streaming:
                 # Can't update token usage if streaming
                 update_token_usage(_keys, response, token_usage)

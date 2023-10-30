@@ -40,8 +40,8 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         # validate args
@@ -82,8 +82,8 @@ class SegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
@@ -97,8 +97,8 @@ class SegmentApi(DatasetApiResource):
         keyword = args['keyword']
 
         query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.document_id == document_id,
+            DocumentSegment.tenant_id == current_user.current_tenant_id,
         )
 
         if status_list:
@@ -171,15 +171,15 @@ class DatasetSegmentApi(DatasetApiResource):
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    'No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider.'
+                )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-            # check segment
+                # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id),
-            DocumentSegment.tenant_id == current_user.current_tenant_id
+            DocumentSegment.id == segment_id,
+            DocumentSegment.tenant_id == current_user.current_tenant_id,
         ).first()
         if not segment:
             raise NotFound('Segment not found.')

@@ -22,9 +22,7 @@ class CalcTokenMixin:
         llm_max_tokens = model_instance.model_rules.max_tokens.max
         completion_max_tokens = model_instance.model_kwargs.max_tokens
         used_tokens = self.get_num_tokens_from_messages(model_instance, messages, **kwargs)
-        rest_tokens = llm_max_tokens - completion_max_tokens - used_tokens
-
-        return rest_tokens
+        return llm_max_tokens - completion_max_tokens - used_tokens
 
 
 class ExceededLLMTokensLimitError(Exception):

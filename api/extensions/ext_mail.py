@@ -13,19 +13,19 @@ class Mail:
         return self._client is not None
 
     def init_app(self, app: Flask):
-        if app.config.get('MAIL_TYPE'):
-            if app.config.get('MAIL_DEFAULT_SEND_FROM'):
-                self._default_send_from = app.config.get('MAIL_DEFAULT_SEND_FROM')
+        if not app.config.get('MAIL_TYPE'):
+            return
+        if app.config.get('MAIL_DEFAULT_SEND_FROM'):
+            self._default_send_from = app.config.get('MAIL_DEFAULT_SEND_FROM')
 
-            if app.config.get('MAIL_TYPE') == 'resend':
-                api_key = app.config.get('RESEND_API_KEY')
-                if not api_key:
-                    raise ValueError('RESEND_API_KEY is not set')
+        if app.config.get('MAIL_TYPE') != 'resend':
+            raise ValueError(f"Unsupported mail type {app.config.get('MAIL_TYPE')}")
+        api_key = app.config.get('RESEND_API_KEY')
+        if not api_key:
+            raise ValueError('RESEND_API_KEY is not set')
 
-                resend.api_key = api_key
-                self._client = resend.Emails
-            else:
-                raise ValueError('Unsupported mail type {}'.format(app.config.get('MAIL_TYPE')))
+        resend.api_key = api_key
+        self._client = resend.Emails
 
     def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:

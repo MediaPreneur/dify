@@ -26,7 +26,7 @@ def init_provider_rules():
     try:
         # Loop through all files in the directory
         for provider_name in provider_names:
-            filename = provider_name + '.json'
+            filename = f'{provider_name}.json'
 
             # Path to each JSON file
             json_file_path = os.path.join(subdirectory_path, filename)

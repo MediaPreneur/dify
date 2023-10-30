@@ -231,16 +231,17 @@ class BaseVectorIndex(BaseIndex):
     def update_qdrant_dataset(self, dataset: Dataset):
         logging.info(f"update_qdrant_dataset {dataset.id}")
 
-        segment = db.session.query(DocumentSegment).filter(
-            DocumentSegment.dataset_id == dataset.id,
-            DocumentSegment.status == 'completed',
-            DocumentSegment.enabled == True
-        ).first()
-
-        if segment:
+        if (
+            segment := db.session.query(DocumentSegment)
+            .filter(
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.status == 'completed',
+                DocumentSegment.enabled == True,
+            )
+            .first()
+        ):
             try:
-                exist = self.text_exists(segment.index_node_id)
-                if exist:
+                if exist := self.text_exists(segment.index_node_id):
                     index_struct = {
                         "type": 'qdrant',
                         "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}

@@ -69,6 +69,4 @@ class HuggingfaceHubEmbeddings(BaseModel, Embeddings):
         if not isinstance(embeddings[0][0], list):
             return embeddings
 
-        # For example two: List[List[List[float]]], need to mean_pooling.
-        sentence_embeddings = [np.mean(embedding[0], axis=0).tolist() for embedding in embeddings]
-        return sentence_embeddings
+        return [np.mean(embedding[0], axis=0).tolist() for embedding in embeddings]

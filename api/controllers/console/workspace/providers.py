@@ -32,26 +32,33 @@ class ProviderListApi(Resource):
         provider_service = ProviderService()
         provider_info_list = provider_service.get_provider_list(tenant_id)
 
-        provider_list = [
+        return [
             {
                 'provider_name': p['provider_name'],
                 'provider_type': p['provider_type'],
                 'is_valid': p['is_valid'],
                 'last_used': p['last_used'],
                 'is_enabled': p['is_valid'],
-                **({
-                       'quota_type': p['quota_type'],
-                       'quota_limit': p['quota_limit'],
-                       'quota_used': p['quota_used']
-                   } if p['provider_type'] == ProviderType.SYSTEM.value else {}),
-                'token': (p['config'] if p['provider_name'] != 'openai' else p['config']['openai_api_key'])
-                        if p['config'] else None
+                **(
+                    {
+                        'quota_type': p['quota_type'],
+                        'quota_limit': p['quota_limit'],
+                        'quota_used': p['quota_used'],
+                    }
+                    if p['provider_type'] == ProviderType.SYSTEM.value
+                    else {}
+                ),
+                'token': (
+                    p['config']
+                    if p['provider_name'] != 'openai'
+                    else p['config']['openai_api_key']
+                )
+                if p['config']
+                else None,
             }
             for name, provider_info in provider_info_list.items()
             for p in provider_info['providers']
         ]
-
-        return provider_list
 
 
 class ProviderTokenApi(Resource):

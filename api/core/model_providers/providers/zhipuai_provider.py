@@ -120,28 +120,28 @@ class ZhipuAIProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value \
-                or (self.provider.provider_type == ProviderType.SYSTEM.value
-                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'api_key': None,
-                }
-
-            if credentials['api_key']:
-                credentials['api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_key']
-                )
-
-                if obfuscated:
-                    credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
-
-            return credentials
-        else:
+        if self.provider.provider_type != ProviderType.CUSTOM.value and (
+            self.provider.provider_type != ProviderType.SYSTEM.value
+            or self.provider.quota_type != ProviderQuotaType.FREE.value
+        ):
             return {}
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'api_key': None,
+            }
+
+        if credentials['api_key']:
+            credentials['api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_key']
+            )
+
+            if obfuscated:
+                credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
+
+        return credentials
 
     def should_deduct_quota(self):
         return True

@@ -32,10 +32,12 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
 
     Usage: batch_create_segment_to_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start batch create segment jobId: {}'.format(job_id), fg='green'))
+    logging.info(
+        click.style(f'Start batch create segment jobId: {job_id}', fg='green')
+    )
     start_at = time.perf_counter()
 
-    indexing_cache_key = 'segment_batch_import_{}'.format(job_id)
+    indexing_cache_key = f'segment_batch_import_{job_id}'
 
     try:
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
@@ -91,7 +93,12 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
         db.session.commit()
         redis_client.setex(indexing_cache_key, 600, 'completed')
         end_at = time.perf_counter()
-        logging.info(click.style('Segment batch created job: {} latency: {}'.format(job_id, end_at - start_at), fg='green'))
+        logging.info(
+            click.style(
+                f'Segment batch created job: {job_id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception as e:
-        logging.exception("Segments batch created index failed:{}".format(str(e)))
+        logging.exception(f"Segments batch created index failed:{str(e)}")
         redis_client.setex(indexing_cache_key, 600, 'error')

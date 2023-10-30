@@ -17,9 +17,8 @@ def validate_jwt_token(view=None):
 
             return view(app_model, end_user, *args, **kwargs)
         return decorated
-    if view:
-        return decorator(view)
-    return decorator
+
+    return decorator(view) if view else decorator
 
 def decode_jwt_token():
     auth_header = request.headers.get('Authorization')
@@ -28,7 +27,7 @@ def decode_jwt_token():
 
     if ' ' not in auth_header:
         raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-    
+
     auth_scheme, tk = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
 
@@ -44,11 +43,14 @@ def decode_jwt_token():
         raise Unauthorized('Site URL is no longer valid.')
     if app_model.enable_site is False:
         raise Unauthorized('Site is disabled.')
-    end_user = db.session.query(EndUser).filter(EndUser.id == decoded['end_user_id']).first()
-    if not end_user:
+    if (
+        end_user := db.session.query(EndUser)
+        .filter(EndUser.id == decoded['end_user_id'])
+        .first()
+    ):
+        return app_model, end_user
+    else:
         raise NotFound()
-
-    return app_model, end_user
 
 class WebApiResource(Resource):
     method_decorators = [validate_jwt_token]

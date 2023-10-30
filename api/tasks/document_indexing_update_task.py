@@ -21,7 +21,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style('Start update document: {}'.format(document_id), fg='green'))
+    logging.info(click.style(f'Start update document: {document_id}', fg='green'))
     start_at = time.perf_counter()
 
     document = db.session.query(Document).filter(
@@ -61,7 +61,11 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         db.session.commit()
         end_at = time.perf_counter()
         logging.info(
-            click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
+            click.style(
+                f'Cleaned document when document update data source or process rule: {document_id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception:
         logging.exception("Cleaned document when document update data source or process rule failed")
 
@@ -69,7 +73,12 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
         end_at = time.perf_counter()
-        logging.info(click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
+        logging.info(
+            click.style(
+                f'update document: {document.id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except DocumentIsPausedException as ex:
         logging.info(click.style(str(ex), fg='yellow'))
     except Exception:

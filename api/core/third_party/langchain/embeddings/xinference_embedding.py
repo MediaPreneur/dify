@@ -37,9 +37,7 @@ class XinferenceEmbeddings(Embeddings):
             model.create_embedding(text)["data"][0]["embedding"] for text in texts
         ]
         vectors = [list(map(float, e)) for e in embeddings]
-        normalized_vectors = [(vector / np.linalg.norm(vector)).tolist() for vector in vectors]
-
-        return normalized_vectors
+        return [(vector / np.linalg.norm(vector)).tolist() for vector in vectors]
 
     def embed_query(self, text: str) -> List[float]:
         model = self.client.get_model(self.model_uid)
@@ -49,6 +47,4 @@ class XinferenceEmbeddings(Embeddings):
         embedding = embedding_res["data"][0]["embedding"]
 
         vector = list(map(float, embedding))
-        normalized_vector = (vector / np.linalg.norm(vector)).tolist()
-
-        return normalized_vector
+        return (vector / np.linalg.norm(vector)).tolist()

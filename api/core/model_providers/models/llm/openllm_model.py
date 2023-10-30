@@ -16,13 +16,11 @@ class OpenLLMModel(BaseLLM):
     def _init_client(self) -> Any:
         self.provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
 
-        client = OpenLLM(
+        return OpenLLM(
             server_url=self.credentials.get('server_url'),
             callbacks=self.callbacks,
-            llm_kwargs=self.provider_model_kwargs
+            llm_kwargs=self.provider_model_kwargs,
         )
-
-        return client
 
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,

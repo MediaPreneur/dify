@@ -76,9 +76,7 @@ def universal_chat_app_required(view=None):
             return view(universal_app, *args, **kwargs)
         return decorated
 
-    if view:
-        return decorator(view)
-    return decorator
+    return decorator(view) if view else decorator
 
 
 class UniversalChatResource(Resource):

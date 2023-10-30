@@ -28,7 +28,7 @@ class UniversalChatConversationListApi(UniversalChatResource):
 
         pinned = None
         if 'pinned' in args and args['pinned'] is not None:
-            pinned = True if args['pinned'] == 'true' else False
+            pinned = args['pinned'] == 'true'
 
         try:
             return WebConversationService.pagination_by_last_id(

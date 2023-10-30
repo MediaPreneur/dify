@@ -120,9 +120,7 @@ class ChatSpark(BaseChatModel):
 
         new_messages = []
         for message in messages:
-            if isinstance(message, ChatMessage):
-                new_messages.append({'role': 'user', 'content': message.content})
-            elif isinstance(message, HumanMessage) or isinstance(message, SystemMessage):
+            if isinstance(message, (ChatMessage, HumanMessage, SystemMessage)):
                 new_messages.append({'role': 'user', 'content': message.content})
             elif isinstance(message, AIMessage):
                 new_messages.append({'role': 'assistant', 'content': message.content})
@@ -150,11 +148,7 @@ class ChatSpark(BaseChatModel):
 
         completion = ""
         for content in self.client.subscribe():
-            if isinstance(content, dict):
-                delta = content['data']
-            else:
-                delta = content
-
+            delta = content['data'] if isinstance(content, dict) else content
             completion += delta
             if self.streaming and run_manager:
                 run_manager.on_llm_new_token(
@@ -182,11 +176,8 @@ class ChatSpark(BaseChatModel):
     def get_num_tokens(self, text: str) -> float:
         """Calculate number of tokens."""
         total = Decimal(0)
-        words = re.findall(r'\b\w+\b|[{}]|\s'.format(re.escape(string.punctuation)), text)
+        words = re.findall(f'\b\w+\b|[{re.escape(string.punctuation)}]|\s', text)
         for word in words:
             if word:
-                if '\u4e00' <= word <= '\u9fff':  # if chinese
-                    total += Decimal('1.5')
-                else:
-                    total += Decimal('0.8')
+                total += Decimal('1.5') if '\u4e00' <= word <= '\u9fff' else Decimal('0.8')
         return int(total)

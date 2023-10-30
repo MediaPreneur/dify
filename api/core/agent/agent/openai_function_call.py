@@ -88,7 +88,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
 
         self.model_instance.model_kwargs.max_tokens = original_max_tokens
 
-        return True if function_call else False
+        return bool(function_call)
 
     def plan(
             self,
@@ -176,15 +176,13 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             else:
                 should_summary_messages.append(message)
 
-        if len(should_summary_messages) > 2:
-            ai_message = should_summary_messages[-2]
-            function_message = should_summary_messages[-1]
-            should_summary_messages = should_summary_messages[self.moving_summary_index:-2]
-            self.moving_summary_index = len(should_summary_messages)
-        else:
-            error_msg = "Exceeded LLM tokens limit, stopped."
-            raise ExceededLLMTokensLimitError(error_msg)
+        if len(should_summary_messages) <= 2:
+            raise ExceededLLMTokensLimitError("Exceeded LLM tokens limit, stopped.")
 
+        ai_message = should_summary_messages[-2]
+        function_message = should_summary_messages[-1]
+        should_summary_messages = should_summary_messages[self.moving_summary_index:-2]
+        self.moving_summary_index = len(should_summary_messages)
         new_messages = [system_message, human_message]
 
         if self.moving_summary_index == 0:
@@ -195,10 +193,13 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             existing_summary=self.moving_summary_buffer
         )
 
-        new_messages.append(AIMessage(content=self.moving_summary_buffer))
-        new_messages.append(ai_message)
-        new_messages.append(function_message)
-
+        new_messages.extend(
+            (
+                AIMessage(content=self.moving_summary_buffer),
+                ai_message,
+                function_message,
+            )
+        )
         return new_messages
 
     def predict_new_summary(
@@ -218,12 +219,9 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        model = model_instance.base_model_name
         if model_instance.model_provider.provider_name == 'azure_openai':
-            model = model_instance.base_model_name
             model = model.replace("gpt-35", "gpt-3.5")
-        else:
-            model = model_instance.base_model_name
-
         tiktoken_ = _import_tiktoken()
         try:
             encoding = tiktoken_.encoding_for_model(model)
@@ -255,11 +253,13 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
                     for f_key, f_value in value.items():
                         num_tokens += len(encoding.encode(f_key))
                         num_tokens += len(encoding.encode(f_value))
+                elif key == "name":
+                    num_tokens += len(encoding.encode(value))
+
+                    num_tokens += tokens_per_name
                 else:
                     num_tokens += len(encoding.encode(value))
 
-                if key == "name":
-                    num_tokens += tokens_per_name
         # every reply is primed with <im_start>assistant
         num_tokens += 3
 

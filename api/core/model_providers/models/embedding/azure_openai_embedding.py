@@ -48,7 +48,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         :param text:
         :return:
         """
-        if len(text) == 0:
+        if not text:
             return 0
 
         enc = tiktoken.encoding_for_model(self.credentials.get('base_model_name'))
@@ -64,15 +64,15 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             return LLMBadRequestError(str(ex))
         elif isinstance(ex, openai.error.APIConnectionError):
             logging.warning("Failed to connect to Azure OpenAI API.")
-            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIConnectionError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
             logging.warning("Azure OpenAI service unavailable.")
-            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+            return LLMAPIUnavailableError(f"{ex.__class__.__name__}:{str(ex)}")
         elif isinstance(ex, openai.error.RateLimitError):
-            return LLMRateLimitError('Azure ' + str(ex))
+            return LLMRateLimitError(f'Azure {str(ex)}')
         elif isinstance(ex, openai.error.AuthenticationError):
-            return LLMAuthorizationError('Azure ' + str(ex))
+            return LLMAuthorizationError(f'Azure {str(ex)}')
         elif isinstance(ex, openai.error.OpenAIError):
-            return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
+            return LLMBadRequestError(f'Azure {ex.__class__.__name__}:{str(ex)}')
         else:
             return ex

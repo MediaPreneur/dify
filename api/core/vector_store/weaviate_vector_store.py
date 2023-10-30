@@ -29,10 +29,7 @@ class WeaviateVectorStore(Weaviate):
             raise ValueError(f"Error during query: {result['errors']}")
 
         entries = result["data"]["Get"][self._index_name]
-        if len(entries) == 0:
-            return False
-
-        return True
+        return len(entries) != 0
 
     def delete(self):
         self._client.schema.delete_class(self._index_name)

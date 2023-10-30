@@ -183,7 +183,7 @@ class Milvus(VectorStore):
 
         # Order of use is host/port, uri, address
         if host is not None and port is not None:
-            given_address = str(host) + ":" + str(port)
+            given_address = f"{host}:{str(port)}"
         elif uri is not None:
             given_address = uri.split("https://")[1]
         elif address is not None:
@@ -193,11 +193,7 @@ class Milvus(VectorStore):
             logger.debug("Missing standard address type for reuse atttempt")
 
         # User defaults to empty string when getting connection info
-        if user is not None:
-            tmp_user = user
-        else:
-            tmp_user = ""
-
+        tmp_user = user if user is not None else ""
         # If a valid address was given, then check if a connection exists
         if given_address is not None:
             for con in connections.list_connections():
@@ -268,21 +264,20 @@ class Milvus(VectorStore):
         if metadatas:
             fields.append(FieldSchema(self._metadata_field, DataType.JSON, max_length=65_535))
 
-        # Create the text field
-        fields.append(
-            FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535)
-        )
-        # Create the primary key field
-        fields.append(
-            FieldSchema(
-                self._primary_field, DataType.INT64, is_primary=True, auto_id=True
+        fields.extend(
+            (
+                FieldSchema(self._text_field, DataType.VARCHAR, max_length=65_535),
+                FieldSchema(
+                    self._primary_field,
+                    DataType.INT64,
+                    is_primary=True,
+                    auto_id=True,
+                ),
+                FieldSchema(
+                    self._vector_field, infer_dtype_bydata(embeddings[0]), dim=dim
+                ),
             )
         )
-        # Create the vector field, supports binary or float vectors
-        fields.append(
-            FieldSchema(self._vector_field, infer_dtype_bydata(embeddings[0]), dim=dim)
-        )
-
         # Create the schema for the collection
         schema = CollectionSchema(fields)
 
@@ -427,7 +422,7 @@ class Milvus(VectorStore):
         except NotImplementedError:
             embeddings = [self.embedding_func.embed_query(x) for x in texts]
 
-        if len(embeddings) == 0:
+        if not embeddings:
             logger.debug("Nothing to insert, skipping.")
             return []
 
@@ -574,10 +569,14 @@ class Milvus(VectorStore):
         # Embed the query text.
         embedding = self.embedding_func.embed_query(query)
 
-        res = self.similarity_search_with_score_by_vector(
-            embedding=embedding, k=k, param=param, expr=expr, timeout=timeout, **kwargs
+        return self.similarity_search_with_score_by_vector(
+            embedding=embedding,
+            k=k,
+            param=param,
+            expr=expr,
+            timeout=timeout,
+            **kwargs
         )
-        return res
 
     def _similarity_search_with_relevance_scores(
         self,

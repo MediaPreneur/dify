@@ -169,7 +169,7 @@ class XinferenceProvider(BaseModelProvider):
         return credentials
 
     @classmethod
-    def _get_extra_credentials(self, credentials: dict) -> dict:
+    def _get_extra_credentials(cls, credentials: dict) -> dict:
         url = f"{credentials['server_url']}/v1/models/{credentials['model_uid']}"
         response = requests.get(url)
         if response.status_code != 200:
@@ -188,7 +188,7 @@ class XinferenceProvider(BaseModelProvider):
         elif "chat" in desc["model_ability"]:
             extra_credentials['model_handle_type'] = 'chat'
         else:
-            raise NotImplementedError(f"Model handle type not supported.")
+            raise NotImplementedError("Model handle type not supported.")
 
         return extra_credentials
 

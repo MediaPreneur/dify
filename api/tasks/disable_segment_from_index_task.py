@@ -19,7 +19,11 @@ def disable_segment_from_index_task(segment_id: str):
 
     Usage: disable_segment_from_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start disable segment from index: {}'.format(segment_id), fg='green'))
+    logging.info(
+        click.style(
+            f'Start disable segment from index: {segment_id}', fg='green'
+        )
+    )
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
@@ -29,23 +33,36 @@ def disable_segment_from_index_task(segment_id: str):
     if segment.status != 'completed':
         return
 
-    indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
+    indexing_cache_key = f'segment_{segment.id}_indexing'
 
     try:
         dataset = segment.dataset
 
         if not dataset:
-            logging.info(click.style('Segment {} has no dataset, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} has no dataset, pass.', fg='cyan'
+                )
+            )
             return
 
         dataset_document = segment.document
 
         if not dataset_document:
-            logging.info(click.style('Segment {} has no document, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} has no document, pass.', fg='cyan'
+                )
+            )
             return
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != 'completed':
-            logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} document status is invalid, pass.',
+                    fg='cyan',
+                )
+            )
             return
 
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
@@ -59,7 +76,12 @@ def disable_segment_from_index_task(segment_id: str):
         kw_index.delete_by_ids([segment.index_node_id])
 
         end_at = time.perf_counter()
-        logging.info(click.style('Segment removed from index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
+        logging.info(
+            click.style(
+                f'Segment removed from index: {segment.id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception:
         logging.exception("remove segment from index failed")
         segment.enabled = True

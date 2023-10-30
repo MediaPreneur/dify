@@ -97,12 +97,9 @@ class ValidModelApi(Resource):
         ModelType.value_of(model_type)
 
         provider_service = ProviderService()
-        valid_models = provider_service.get_valid_model_list(
-            tenant_id=current_user.current_tenant_id,
-            model_type=model_type
+        return provider_service.get_valid_model_list(
+            tenant_id=current_user.current_tenant_id, model_type=model_type
         )
-
-        return valid_models
 
 
 api.add_resource(DefaultModelApi, '/workspaces/current/default-model')

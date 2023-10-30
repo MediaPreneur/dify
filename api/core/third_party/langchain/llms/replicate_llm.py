@@ -49,9 +49,7 @@ class EnhanceReplicate(Replicate):
         first_input_name = input_properties[0][0]
         inputs = {first_input_name: prompt, **self.input}
 
-        prediction = client.predictions.create(
-            version=version, input={**inputs, **kwargs}
-        )
+        prediction = client.predictions.create(version=version, input=inputs | kwargs)
         current_completion: str = ""
         stop_condition_reached = False
         for output in prediction.output_iterator():

@@ -16,8 +16,8 @@ class ReplicateEmbedding(BaseEmbedding):
         )
 
         client = ReplicateEmbeddings(
-            model=name + ':' + credentials.get('model_version'),
-            replicate_api_token=credentials.get('replicate_api_token')
+            model=f'{name}:' + credentials.get('model_version'),
+            replicate_api_token=credentials.get('replicate_api_token'),
         )
 
         super().__init__(model_provider, client, name)

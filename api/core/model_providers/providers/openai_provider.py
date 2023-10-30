@@ -196,64 +196,61 @@ class OpenAIProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'openai_api_base': None,
-                    'openai_api_key': self.provider.encrypted_config,
-                    'openai_organization': None
-                }
-
-            if credentials['openai_api_key']:
-                credentials['openai_api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['openai_api_key']
-                )
-
-                if obfuscated:
-                    credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
-
-            if 'openai_api_base' not in credentials or not credentials['openai_api_base']:
-                credentials['openai_api_base'] = None
-            else:
-                credentials['openai_api_base'] = credentials['openai_api_base'] + '/v1'
-
-            if 'openai_organization' not in credentials:
-                credentials['openai_organization'] = None
-
-            return credentials
-        else:
-            if hosted_model_providers.openai:
-                return {
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
+            return (
+                {
                     'openai_api_base': hosted_model_providers.openai.api_base,
                     'openai_api_key': hosted_model_providers.openai.api_key,
-                    'openai_organization': hosted_model_providers.openai.api_organization
+                    'openai_organization': hosted_model_providers.openai.api_organization,
                 }
-            else:
-                return {
+                if hosted_model_providers.openai
+                else {
                     'openai_api_base': None,
                     'openai_api_key': None,
-                    'openai_organization': None
+                    'openai_organization': None,
                 }
+            )
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'openai_api_base': None,
+                'openai_api_key': self.provider.encrypted_config,
+                'openai_organization': None
+            }
+
+        if credentials['openai_api_key']:
+            credentials['openai_api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['openai_api_key']
+            )
+
+            if obfuscated:
+                credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
+
+        if 'openai_api_base' not in credentials or not credentials['openai_api_base']:
+            credentials['openai_api_base'] = None
+        else:
+            credentials['openai_api_base'] = credentials['openai_api_base'] + '/v1'
+
+        if 'openai_organization' not in credentials:
+            credentials['openai_organization'] = None
+
+        return credentials
 
     @classmethod
     def is_provider_type_system_supported(cls) -> bool:
         if current_app.config['EDITION'] != 'CLOUD':
             return False
 
-        if hosted_model_providers.openai:
-            return True
-
-        return False
+        return bool(hosted_model_providers.openai)
 
     def should_deduct_quota(self):
-        if hosted_model_providers.openai \
-                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > -1:
-            return True
-
-        return False
+        return bool(
+            hosted_model_providers.openai
+            and hosted_model_providers.openai.quota_limit
+            and hosted_model_providers.openai.quota_limit > -1
+        )
 
     def get_payment_info(self) -> Optional[dict]:
         """

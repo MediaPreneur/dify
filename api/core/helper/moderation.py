@@ -10,14 +10,14 @@ from models.provider import ProviderType
 
 
 def check_moderation(model_provider: BaseModelProvider, text: str) -> bool:
-    if hosted_config.moderation.enabled is True and hosted_model_providers.openai:
-        if model_provider.provider.provider_type == ProviderType.SYSTEM.value \
+    if model_provider.provider.provider_type == ProviderType.SYSTEM.value \
                 and model_provider.provider_name in hosted_config.moderation.providers:
+        if hosted_config.moderation.enabled is True and hosted_model_providers.openai:
             # 2000 text per chunk
             length = 2000
             text_chunks = [text[i:i + length] for i in range(0, len(text), length)]
 
-            if len(text_chunks) == 0:
+            if not text_chunks:
                 return True
 
             text_chunk = random.choice(text_chunks)

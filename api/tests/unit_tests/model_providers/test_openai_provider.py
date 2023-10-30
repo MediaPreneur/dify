@@ -14,12 +14,11 @@ VALIDATE_CREDENTIAL_KEY = 'openai_api_key'
 
 
 def moderation_side_effect(*args, **kwargs):
-    if kwargs['api_key'] == 'valid_key':
-        mock_instance = MagicMock()
-        mock_instance.request = MagicMock()
-        return mock_instance, {}
-    else:
+    if kwargs['api_key'] != 'valid_key':
         raise AuthenticationError('Invalid credentials')
+    mock_instance = MagicMock()
+    mock_instance.request = MagicMock()
+    return mock_instance, {}
 
 
 def encrypt_side_effect(tenant_id, encrypt_key):

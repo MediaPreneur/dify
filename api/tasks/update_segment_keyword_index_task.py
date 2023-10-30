@@ -21,30 +21,47 @@ def update_segment_keyword_index_task(segment_id: str):
     :param segment_id:
     Usage: update_segment_keyword_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start update segment keyword index: {}'.format(segment_id), fg='green'))
+    logging.info(
+        click.style(
+            f'Start update segment keyword index: {segment_id}', fg='green'
+        )
+    )
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
         raise NotFound('Segment not found')
 
-    indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
+    indexing_cache_key = f'segment_{segment.id}_indexing'
 
     try:
         dataset = segment.dataset
 
         if not dataset:
-            logging.info(click.style('Segment {} has no dataset, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} has no dataset, pass.', fg='cyan'
+                )
+            )
             return
 
         dataset_document = segment.document
 
         if not dataset_document:
-            logging.info(click.style('Segment {} has no document, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} has no document, pass.', fg='cyan'
+                )
+            )
             return
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != 'completed':
-            logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
+            logging.info(
+                click.style(
+                    f'Segment {segment.id} document status is invalid, pass.',
+                    fg='cyan',
+                )
+            )
             return
 
         kw_index = IndexBuilder.get_index(dataset, 'economy')
@@ -52,13 +69,16 @@ def update_segment_keyword_index_task(segment_id: str):
         # delete from keyword index
         kw_index.delete_by_ids([segment.index_node_id])
 
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
+        if index := IndexBuilder.get_index(dataset, 'economy'):
             index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
 
         end_at = time.perf_counter()
-        logging.info(click.style('Segment update index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
+        logging.info(
+            click.style(
+                f'Segment update index: {segment.id} latency: {end_at - start_at}',
+                fg='green',
+            )
+        )
     except Exception as e:
         logging.exception("update segment index failed")
         segment.enabled = False

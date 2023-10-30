@@ -22,14 +22,14 @@ class ToolProviderListApi(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
 
-        tool_credential_dict = {}
-        for tool_name in ToolProviderName:
-            tool_credential_dict[tool_name.value] = {
+        tool_credential_dict = {
+            tool_name.value: {
                 'tool_name': tool_name.value,
                 'is_enabled': False,
-                'credentials': None
+                'credentials': None,
             }
-
+            for tool_name in ToolProviderName
+        }
         tool_providers = db.session.query(ToolProvider).filter(ToolProvider.tenant_id == tenant_id).all()
 
         for p in tool_providers:
@@ -74,13 +74,14 @@ class ToolProviderCredentialsApi(Resource):
 
         tenant = current_user.current_tenant
 
-        tool_provider_model = db.session.query(ToolProvider).filter(
+        if (
+            tool_provider_model := db.session.query(ToolProvider)
+            .filter(
                 ToolProvider.tenant_id == tenant.id,
                 ToolProvider.tool_name == provider,
-            ).first()
-
-        # Only allow updating token for CUSTOM provider type
-        if tool_provider_model:
+            )
+            .first()
+        ):
             tool_provider_model.encrypted_credentials = encrypted_credentials
             tool_provider_model.is_enabled = True
         else:

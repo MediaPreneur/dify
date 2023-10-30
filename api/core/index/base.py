@@ -57,8 +57,7 @@ class BaseIndex(ABC):
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts:
             doc_id = text.metadata['doc_id']
-            exists_duplicate_node = self.text_exists(doc_id)
-            if exists_duplicate_node:
+            if exists_duplicate_node := self.text_exists(doc_id):
                 texts.remove(text)
 
         return texts

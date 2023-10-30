@@ -22,10 +22,7 @@ def get_oauth_providers():
                                    redirect_uri=current_app.config.get(
                                        'CONSOLE_API_URL') + '/console/api/oauth/data-source/callback/notion')
 
-        OAUTH_PROVIDERS = {
-            'notion': notion_oauth
-        }
-        return OAUTH_PROVIDERS
+        return {'notion': notion_oauth}
 
 
 class OAuthDataSource(Resource):

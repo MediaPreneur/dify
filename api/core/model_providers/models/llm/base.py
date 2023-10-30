@@ -118,7 +118,7 @@ class BaseLLM(BaseProviderModel):
 
         if not moderation_result:
             kwargs['fake_response'] = "I apologize for any confusion, " \
-                                      "but I'm an AI assistant to be helpful, harmless, and honest."
+                                          "but I'm an AI assistant to be helpful, harmless, and honest."
 
         if self.deduct_quota:
             self.model_provider.check_quota_over_limit()
@@ -142,7 +142,9 @@ class BaseLLM(BaseProviderModel):
                 result = self._run(
                     messages=messages,
                     stop=stop,
-                    callbacks=callbacks if not (self.streaming and not self.support_streaming) else None,
+                    callbacks=callbacks
+                    if not self.streaming or self.support_streaming
+                    else None,
                     **kwargs
                 )
             except Exception as ex:
@@ -222,7 +224,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return:
         """
-        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
+        if message_type in [MessageType.USER, MessageType.SYSTEM]:
             unit_price = self.price_config['prompt']
         else:
             unit_price = self.price_config['completion']
@@ -240,7 +242,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return: decimal.Decimal('0.0001')
         """
-        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
+        if message_type in [MessageType.USER, MessageType.SYSTEM]:
             unit_price = self.price_config['prompt']
         else:
             unit_price = self.price_config['completion']
@@ -255,11 +257,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return: decimal.Decimal('0.000001')
         """
-        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
-            price_unit = self.price_config['unit']
-        else:
-            price_unit = self.price_config['unit']
-
+        price_unit = self.price_config['unit']
         price_unit = price_unit.quantize(decimal.Decimal('0.000001'), rounding=decimal.ROUND_HALF_UP)
         logging.debug(f"price_unit={price_unit}")
         return price_unit
@@ -270,8 +268,7 @@ class BaseLLM(BaseProviderModel):
 
         :return: get from price config, default 'USD'
         """
-        currency = self.price_config['currency']
-        return currency
+        return self.price_config['currency']
 
     def get_model_kwargs(self):
         return self.model_kwargs
@@ -316,15 +313,8 @@ class BaseLLM(BaseProviderModel):
             model_mode = self.model_mode
 
         if model_mode == ModelMode.COMPLETION:
-            if len(messages) == 0:
-                return ''
-
-            return messages[0].content
-        else:
-            if len(messages) == 0:
-                return []
-
-            return to_lc_messages(messages)
+            return '' if not messages else messages[0].content
+        return [] if not messages else to_lc_messages(messages)
 
     def _to_model_kwargs_input(self, model_rules: ModelKwargsRules, model_kwargs: ModelKwargs) -> dict:
         """

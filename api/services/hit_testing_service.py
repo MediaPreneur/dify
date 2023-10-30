@@ -131,8 +131,7 @@ class HitTestingService:
         tsne = TSNE(n_components=2, perplexity=perplexity, early_exaggeration=12.0)
         data_tsne = tsne.fit_transform(concatenate_data)
 
-        tsne_position_data = []
-        for i in range(len(data_tsne)):
-            tsne_position_data.append({'x': float(data_tsne[i][0]), 'y': float(data_tsne[i][1])})
-
-        return tsne_position_data
+        return [
+            {'x': float(data_tsne[i][0]), 'y': float(data_tsne[i][1])}
+            for i in range(len(data_tsne))
+        ]

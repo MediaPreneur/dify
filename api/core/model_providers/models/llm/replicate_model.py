@@ -28,7 +28,7 @@ class ReplicateModel(BaseLLM):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
 
         return EnhanceReplicate(
-            model=self.name + ':' + self.credentials.get('model_version'),
+            model=f'{self.name}:' + self.credentials.get('model_version'),
             input=provider_model_kwargs,
             streaming=self.streaming,
             replicate_api_token=self.credentials.get('replicate_api_token'),
@@ -50,8 +50,9 @@ class ReplicateModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         extra_kwargs = {}
         if isinstance(prompts, list):
-            system_messages = [message for message in messages if message.type == 'system']
-            if system_messages:
+            if system_messages := [
+                message for message in messages if message.type == 'system'
+            ]:
                 system_message = system_messages[0]
                 extra_kwargs['system_prompt'] = system_message.content
                 prompts = [message for message in messages if message.type != 'system']

@@ -46,31 +46,38 @@ class AccountService:
         account = db.session.query(Account).filter(Account.id == account_id).first()
 
         if account:
-            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+            if account.status in [
+                AccountStatus.BANNED.value,
+                AccountStatus.CLOSED.value,
+            ]:
                 raise Forbidden('Account is banned or closed.')
 
-            workspace_id = session.get('workspace_id')
-            if workspace_id:
-                tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                    TenantAccountJoin.account_id == account.id,
-                    TenantAccountJoin.tenant_id == workspace_id
-                ).first()
-
-                if not tenant_account_join:
-                    tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                        TenantAccountJoin.account_id == account.id).first()
-
-                    if tenant_account_join:
+            if workspace_id := session.get('workspace_id'):
+                if (
+                    tenant_account_join := db.session.query(TenantAccountJoin)
+                    .filter(
+                        TenantAccountJoin.account_id == account.id,
+                        TenantAccountJoin.tenant_id == workspace_id,
+                    )
+                    .first()
+                ):
+                    account.current_tenant_id = workspace_id
+                else:
+                    if (
+                        tenant_account_join := db.session.query(TenantAccountJoin)
+                        .filter(TenantAccountJoin.account_id == account.id)
+                        .first()
+                    ):
                         account.current_tenant_id = tenant_account_join.tenant_id
                     else:
                         _create_tenant_for_account(account)
                     session['workspace_id'] = account.current_tenant_id
-                else:
-                    account.current_tenant_id = workspace_id
             else:
-                tenant_account_join = db.session.query(TenantAccountJoin).filter(
-                    TenantAccountJoin.account_id == account.id).first()
-                if tenant_account_join:
+                if (
+                    tenant_account_join := db.session.query(TenantAccountJoin)
+                    .filter(TenantAccountJoin.account_id == account.id)
+                    .first()
+                ):
                     account.current_tenant_id = tenant_account_join.tenant_id
                 else:
                     _create_tenant_for_account(account)
@@ -94,8 +101,7 @@ class AccountService:
             "sub": 'Console API Passport',
         }
 
-        token = PassportService().issue(payload)
-        return token
+        return PassportService().issue(payload)
 
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
@@ -105,7 +111,10 @@ class AccountService:
         if not account:
             raise AccountLoginError('Invalid email or password.')
 
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in [
+            AccountStatus.BANNED.value,
+            AccountStatus.CLOSED.value,
+        ]:
             raise AccountLoginError('Account is banned or closed.')
 
         if account.status == AccountStatus.PENDING.value:
@@ -172,11 +181,9 @@ class AccountService:
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
         """Link account integrate"""
         try:
-            # Query whether there is an existing binding record for the same provider
-            account_integrate: Optional[AccountIntegrate] = AccountIntegrate.query.filter_by(account_id=account.id,
-                                                                                             provider=provider).first()
-
-            if account_integrate:
+            if account_integrate := AccountIntegrate.query.filter_by(
+                account_id=account.id, provider=provider
+            ).first():
                 # If it exists, update the record
                 account_integrate.open_id = open_id
                 account_integrate.encrypted_token = ""  # todo
@@ -266,8 +273,9 @@ class TenantService:
         if not tenant:
             raise TenantNotFound("Tenant not found.")
 
-        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
-        if ta:
+        if ta := TenantAccountJoin.query.filter_by(
+            tenant_id=tenant.id, account_id=account.id
+        ).first():
             tenant.role = ta.role
         else:
             raise TenantNotFound("Tenant not found for the account.")
@@ -459,11 +467,9 @@ class RegisterService:
             db.session.commit()
         else:
             TenantService.check_member_permission(tenant, inviter, account, 'add')
-            ta = TenantAccountJoin.query.filter_by(
-                tenant_id=tenant.id,
-                account_id=account.id
-            ).first()
-            if ta:
+            if ta := TenantAccountJoin.query.filter_by(
+                tenant_id=tenant.id, account_id=account.id
+            ).first():
                 raise AccountAlreadyInTenantError("Account already in tenant.")
 
         TenantService.create_tenant_member(tenant, account, role)
@@ -499,7 +505,7 @@ class RegisterService:
     def revoke_token(cls, workspace_id: str, email: str, token: str):
         if workspace_id and email:
             email_hash = sha256(email.encode()).hexdigest()
-            cache_key = 'member_invite_token:{}, {}:{}'.format(workspace_id, email_hash, token)
+            cache_key = f'member_invite_token:{workspace_id}, {email_hash}:{token}'
             redis_client.delete(cache_key)
         else:
             redis_client.delete(cls._get_invitation_token_key(token))
@@ -525,38 +531,33 @@ class RegisterService:
         if not tenant_account:
             return None
 
-        account = tenant_account[0]
-        if not account:
-            return None
-
-        if invitation_data['account_id'] != str(account.id):
-            return None
-
-        return {
-                'account': account,
-                'data': invitation_data,
-                'tenant': tenant,
+        if account := tenant_account[0]:
+            return (
+                None
+                if invitation_data['account_id'] != str(account.id)
+                else {
+                    'account': account,
+                    'data': invitation_data,
+                    'tenant': tenant,
                 }
+            )
+        else:
+            return None
 
     @classmethod
     def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[str]:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f'member_invite_token:{workspace_id}, {email_hash}:{token}'
-            account_id = redis_client.get(cache_key)
-
-            if not account_id:
+            if account_id := redis_client.get(cache_key):
+                return {
+                    'account_id': account_id.decode('utf-8'),
+                    'email': email,
+                    'workspace_id': workspace_id,
+                }
+            else:
                 return None
 
-            return {
-                'account_id': account_id.decode('utf-8'),
-                'email': email,
-                'workspace_id': workspace_id,
-            }
         else:
             data = redis_client.get(cls._get_invitation_token_key(token))
-            if not data:
-                return None
-
-            invitation = json.loads(data)
-            return invitation
+            return None if not data else json.loads(data)

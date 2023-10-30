@@ -106,9 +106,7 @@ class AccountNameApi(Resource):
             raise ValueError(
                 "Account name must be between 3 and 30 characters.")
 
-        updated_account = AccountService.update_account(current_user, name=args['name'])
-
-        return updated_account
+        return AccountService.update_account(current_user, name=args['name'])
 
 
 class AccountAvatarApi(Resource):
@@ -121,9 +119,7 @@ class AccountAvatarApi(Resource):
         parser.add_argument('avatar', type=str, required=True, location='json')
         args = parser.parse_args()
 
-        updated_account = AccountService.update_account(current_user, avatar=args['avatar'])
-
-        return updated_account
+        return AccountService.update_account(current_user, avatar=args['avatar'])
 
 
 class AccountInterfaceLanguageApi(Resource):
@@ -137,9 +133,9 @@ class AccountInterfaceLanguageApi(Resource):
             'interface_language', type=supported_language, required=True, location='json')
         args = parser.parse_args()
 
-        updated_account = AccountService.update_account(current_user, interface_language=args['interface_language'])
-
-        return updated_account
+        return AccountService.update_account(
+            current_user, interface_language=args['interface_language']
+        )
 
 
 class AccountInterfaceThemeApi(Resource):
@@ -153,9 +149,9 @@ class AccountInterfaceThemeApi(Resource):
             'light', 'dark'], required=True, location='json')
         args = parser.parse_args()
 
-        updated_account = AccountService.update_account(current_user, interface_theme=args['interface_theme'])
-
-        return updated_account
+        return AccountService.update_account(
+            current_user, interface_theme=args['interface_theme']
+        )
 
 
 class AccountTimezoneApi(Resource):
@@ -173,9 +169,7 @@ class AccountTimezoneApi(Resource):
         if args['timezone'] not in pytz.all_timezones:
             raise ValueError("Invalid timezone string.")
 
-        updated_account = AccountService.update_account(current_user, timezone=args['timezone'])
-
-        return updated_account
+        return AccountService.update_account(current_user, timezone=args['timezone'])
 
 
 class AccountPasswordApi(Resource):
@@ -233,8 +227,9 @@ class AccountIntegrateApi(Resource):
 
         integrate_data = []
         for provider in providers:
-            existing_integrate = next((ai for ai in account_integrates if ai.provider == provider), None)
-            if existing_integrate:
+            if existing_integrate := next(
+                (ai for ai in account_integrates if ai.provider == provider), None
+            ):
                 integrate_data.append({
                     'id': existing_integrate.id,
                     'provider': provider,

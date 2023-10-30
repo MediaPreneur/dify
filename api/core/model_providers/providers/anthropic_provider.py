@@ -126,56 +126,50 @@ class AnthropicProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'anthropic_api_url': None,
-                    'anthropic_api_key': None
-                }
-
-            if credentials['anthropic_api_key']:
-                credentials['anthropic_api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['anthropic_api_key']
-                )
-
-                if obfuscated:
-                    credentials['anthropic_api_key'] = encrypter.obfuscated_token(credentials['anthropic_api_key'])
-
-            if 'anthropic_api_url' not in credentials:
-                credentials['anthropic_api_url'] = None
-
-            return credentials
-        else:
-            if hosted_model_providers.anthropic:
-                return {
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
+            return (
+                {
                     'anthropic_api_url': hosted_model_providers.anthropic.api_base,
                     'anthropic_api_key': hosted_model_providers.anthropic.api_key,
                 }
-            else:
-                return {
-                    'anthropic_api_url': None,
-                    'anthropic_api_key': None
-                }
+                if hosted_model_providers.anthropic
+                else {'anthropic_api_url': None, 'anthropic_api_key': None}
+            )
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'anthropic_api_url': None,
+                'anthropic_api_key': None
+            }
+
+        if credentials['anthropic_api_key']:
+            credentials['anthropic_api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['anthropic_api_key']
+            )
+
+            if obfuscated:
+                credentials['anthropic_api_key'] = encrypter.obfuscated_token(credentials['anthropic_api_key'])
+
+        if 'anthropic_api_url' not in credentials:
+            credentials['anthropic_api_url'] = None
+
+        return credentials
 
     @classmethod
     def is_provider_type_system_supported(cls) -> bool:
         if current_app.config['EDITION'] != 'CLOUD':
             return False
 
-        if hosted_model_providers.anthropic:
-            return True
-
-        return False
+        return bool(hosted_model_providers.anthropic)
 
     def should_deduct_quota(self):
-        if hosted_model_providers.anthropic and \
-                hosted_model_providers.anthropic.quota_limit and hosted_model_providers.anthropic.quota_limit > -1:
-            return True
-
-        return False
+        return bool(
+            hosted_model_providers.anthropic
+            and hosted_model_providers.anthropic.quota_limit
+            and hosted_model_providers.anthropic.quota_limit > -1
+        )
 
     def get_payment_info(self) -> Optional[dict]:
         """

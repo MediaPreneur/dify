@@ -74,21 +74,7 @@ class WenxinProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
-        model_max_tokens = {
-            'ernie-bot-4': 4800,
-            'ernie-bot': 4800,
-            'ernie-bot-turbo': 11200,
-        }
-
-        if model_name in ['ernie-bot-4', 'ernie-bot', 'ernie-bot-turbo']:
-            return ModelKwargsRules(
-                temperature=KwargRule[float](min=0.01, max=1, default=0.95, precision=2),
-                top_p=KwargRule[float](min=0.01, max=1, default=0.8, precision=2),
-                presence_penalty=KwargRule[float](enabled=False),
-                frequency_penalty=KwargRule[float](enabled=False),
-                max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
-            )
-        else:
+        if model_name not in {'ernie-bot-4', 'ernie-bot', 'ernie-bot-turbo'}:
             return ModelKwargsRules(
                 temperature=KwargRule[float](enabled=False),
                 top_p=KwargRule[float](enabled=False),
@@ -96,6 +82,19 @@ class WenxinProvider(BaseModelProvider):
                 frequency_penalty=KwargRule[float](enabled=False),
                 max_tokens=KwargRule[int](enabled=False),
             )
+        model_max_tokens = {
+            'ernie-bot-4': 4800,
+            'ernie-bot': 4800,
+            'ernie-bot-turbo': 11200,
+        }
+
+        return ModelKwargsRules(
+            temperature=KwargRule[float](min=0.01, max=1, default=0.95, precision=2),
+            top_p=KwargRule[float](min=0.01, max=1, default=0.8, precision=2),
+            presence_penalty=KwargRule[float](enabled=False),
+            frequency_penalty=KwargRule[float](enabled=False),
+            max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
+        )
 
     @classmethod
     def is_provider_credentials_valid_or_raise(cls, credentials: dict):
@@ -130,39 +129,38 @@ class WenxinProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'api_key': None,
-                    'secret_key': None,
-                }
-
-            if credentials['api_key']:
-                credentials['api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['api_key']
-                )
-
-                if obfuscated:
-                    credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
-
-            if credentials['secret_key']:
-                credentials['secret_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['secret_key']
-                )
-
-                if obfuscated:
-                    credentials['secret_key'] = encrypter.obfuscated_token(credentials['secret_key'])
-
-            return credentials
-        else:
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
             return {
                 'api_key': None,
                 'secret_key': None,
             }
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'api_key': None,
+                'secret_key': None,
+            }
+
+        if credentials['api_key']:
+            credentials['api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['api_key']
+            )
+
+            if obfuscated:
+                credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
+
+        if credentials['secret_key']:
+            credentials['secret_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['secret_key']
+            )
+
+            if obfuscated:
+                credentials['secret_key'] = encrypter.obfuscated_token(credentials['secret_key'])
+
+        return credentials
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

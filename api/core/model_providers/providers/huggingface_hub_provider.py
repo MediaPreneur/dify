@@ -162,13 +162,15 @@ class HuggingfaceHubProvider(BaseModelProvider):
             if response.status_code != 200:
                 raise ValueError('User Name or Organization Name is invalid.')
 
-            model_repository_name = ''
-
-            for item in response.json().get("items", []):
-                if item.get("status", {}).get("url") == credentials['huggingfacehub_endpoint_url']:
-                    model_repository_name = item.get("model", {}).get("repository")
-                    break
-            
+            model_repository_name = next(
+                (
+                    item.get("model", {}).get("repository")
+                    for item in response.json().get("items", [])
+                    if item.get("status", {}).get("url")
+                    == credentials['huggingfacehub_endpoint_url']
+                ),
+                '',
+            )
             if model_repository_name != model_name:
                 raise ValueError(f'Model Name {model_name} is invalid. Please check it on the inference endpoints console.')
 

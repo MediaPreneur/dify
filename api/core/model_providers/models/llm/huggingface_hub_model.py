@@ -16,30 +16,30 @@ class HuggingfaceHubModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            streaming = self.streaming
-
-            if 'baichuan' in self.name.lower():
-                streaming = False
-
-            client = HuggingFaceEndpointLLM(
-                endpoint_url=self.credentials['huggingfacehub_endpoint_url'],
-                task=self.credentials['task_type'],
-                model_kwargs=provider_model_kwargs,
-                huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
-                callbacks=self.callbacks,
-                streaming=streaming
-            )
-        else:
-            client = HuggingFaceHubLLM(
+        if self.credentials['huggingfacehub_api_type'] != 'inference_endpoints':
+            return HuggingFaceHubLLM(
                 repo_id=self.name,
                 task=self.credentials['task_type'],
                 model_kwargs=provider_model_kwargs,
-                huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
+                huggingfacehub_api_token=self.credentials[
+                    'huggingfacehub_api_token'
+                ],
                 callbacks=self.callbacks,
             )
 
-        return client
+        streaming = self.streaming
+
+        if 'baichuan' in self.name.lower():
+            streaming = False
+
+        return HuggingFaceEndpointLLM(
+            endpoint_url=self.credentials['huggingfacehub_endpoint_url'],
+            task=self.credentials['task_type'],
+            model_kwargs=provider_model_kwargs,
+            huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
+            callbacks=self.callbacks,
+            streaming=streaming,
+        )
 
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
@@ -75,10 +75,6 @@ class HuggingfaceHubModel(BaseLLM):
 
     @property
     def support_streaming(self):
-        if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            if 'baichuan' in self.name.lower():
-                return False
-
-            return True
-        else:
+        if self.credentials['huggingfacehub_api_type'] != 'inference_endpoints':
             return False
+        return 'baichuan' not in self.name.lower()

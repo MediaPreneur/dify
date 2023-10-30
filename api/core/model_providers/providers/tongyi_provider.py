@@ -104,26 +104,25 @@ class TongyiProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
-            try:
-                credentials = json.loads(self.provider.encrypted_config)
-            except JSONDecodeError:
-                credentials = {
-                    'dashscope_api_key': None
-                }
+        if self.provider.provider_type != ProviderType.CUSTOM.value:
+            return {}
+        try:
+            credentials = json.loads(self.provider.encrypted_config)
+        except JSONDecodeError:
+            credentials = {
+                'dashscope_api_key': None
+            }
 
-            if credentials['dashscope_api_key']:
-                credentials['dashscope_api_key'] = encrypter.decrypt_token(
-                    self.provider.tenant_id,
-                    credentials['dashscope_api_key']
-                )
+        if credentials['dashscope_api_key']:
+            credentials['dashscope_api_key'] = encrypter.decrypt_token(
+                self.provider.tenant_id,
+                credentials['dashscope_api_key']
+            )
 
-                if obfuscated:
-                    credentials['dashscope_api_key'] = encrypter.obfuscated_token(credentials['dashscope_api_key'])
+            if obfuscated:
+                credentials['dashscope_api_key'] = encrypter.obfuscated_token(credentials['dashscope_api_key'])
 
-            return credentials
-
-        return {}
+        return credentials
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

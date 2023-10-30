@@ -30,17 +30,15 @@ class DatasetApi(DatasetApiResource):
         provider_service = ProviderService()
         valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
                                                                  ModelType.EMBEDDINGS.value)
-        model_names = []
-        for valid_model in valid_model_list:
-            model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
+        model_names = [
+            f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}"
+            for valid_model in valid_model_list
+        ]
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             if item['indexing_technique'] == 'high_quality':
                 item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
-                if item_model in model_names:
-                    item['embedding_available'] = True
-                else:
-                    item['embedding_available'] = False
+                item['embedding_available'] = item_model in model_names
             else:
                 item['embedding_available'] = True
         response = {

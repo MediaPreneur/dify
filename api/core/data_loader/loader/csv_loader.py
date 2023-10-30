@@ -30,19 +30,18 @@ class CSVLoader(LCCSVLoader):
             with open(self.file_path, newline="", encoding=self.encoding) as csvfile:
                 docs = self._read_from_file(csvfile)
         except UnicodeDecodeError as e:
-            if self.autodetect_encoding:
-                detected_encodings = detect_file_encodings(self.file_path)
-                for encoding in detected_encodings:
-                    logger.debug("Trying encoding: ", encoding.encoding)
-                    try:
-                        with open(self.file_path, newline="", encoding=encoding.encoding) as csvfile:
-                            docs = self._read_from_file(csvfile)
-                        break
-                    except UnicodeDecodeError:
-                        continue
-            else:
+            if not self.autodetect_encoding:
                 raise RuntimeError(f"Error loading {self.file_path}") from e
 
+            detected_encodings = detect_file_encodings(self.file_path)
+            for encoding in detected_encodings:
+                logger.debug("Trying encoding: ", encoding.encoding)
+                try:
+                    with open(self.file_path, newline="", encoding=encoding.encoding) as csvfile:
+                        docs = self._read_from_file(csvfile)
+                    break
+                except UnicodeDecodeError:
+                    continue
         return docs
 
     def _read_from_file(self, csvfile):

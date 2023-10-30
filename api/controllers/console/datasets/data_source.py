@@ -42,19 +42,21 @@ class DataSourceApi(Resource):
 
         integrate_data = []
         for provider in providers:
-            # existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
-            existing_integrates = filter(lambda item: item.provider == provider, data_source_integrates)
-            if existing_integrates:
-                for existing_integrate in list(existing_integrates):
-                    integrate_data.append({
+            if existing_integrates := filter(
+                lambda item: item.provider == provider, data_source_integrates
+            ):
+                integrate_data.extend(
+                    {
                         'id': existing_integrate.id,
                         'provider': provider,
                         'created_at': existing_integrate.created_at,
                         'is_bound': True,
                         'disabled': existing_integrate.disabled,
                         'source_info': existing_integrate.source_info,
-                        'link': f'{base_url}{data_source_oauth_base_path}/{provider}'
-                })
+                        'link': f'{base_url}{data_source_oauth_base_path}/{provider}',
+                    }
+                    for existing_integrate in list(existing_integrates)
+                )
             else:
                 integrate_data.append({
                     'id': None,
@@ -79,7 +81,14 @@ class DataSourceApi(Resource):
         if data_source_binding is None:
             raise NotFound('Data source binding not found.')
         # enable binding
-        if action == 'enable':
+        if action == 'disable':
+            if data_source_binding.disabled:
+                raise ValueError('Data source is disabled.')
+            data_source_binding.disabled = True
+            data_source_binding.updated_at = datetime.datetime.utcnow()
+            db.session.add(data_source_binding)
+            db.session.commit()
+        elif action == 'enable':
             if data_source_binding.disabled:
                 data_source_binding.disabled = False
                 data_source_binding.updated_at = datetime.datetime.utcnow()
@@ -87,15 +96,6 @@ class DataSourceApi(Resource):
                 db.session.commit()
             else:
                 raise ValueError('Data source is not disabled.')
-        # disable binding
-        if action == 'disable':
-            if not data_source_binding.disabled:
-                data_source_binding.disabled = True
-                data_source_binding.updated_at = datetime.datetime.utcnow()
-                db.session.add(data_source_binding)
-                db.session.commit()
-            else:
-                raise ValueError('Data source is disabled.')
         return {'result': 'success'}, 200
 
 
@@ -115,13 +115,12 @@ class DataSourceNotionListApi(Resource):
                 raise NotFound('Dataset not found.')
             if dataset.data_source_type != 'notion_import':
                 raise ValueError('Dataset is not notion type.')
-            documents = Document.query.filter_by(
+            if documents := Document.query.filter_by(
                 dataset_id=dataset_id,
                 tenant_id=current_user.current_tenant_id,
                 data_source_type='notion_import',
-                enabled=True
-            ).all()
-            if documents:
+                enabled=True,
+            ).all():
                 for document in documents:
                     data_source_info = json.loads(document.data_source_info)
                     exist_page_ids.append(data_source_info['notion_page_id'])
@@ -141,10 +140,7 @@ class DataSourceNotionListApi(Resource):
             pages = source_info['pages']
             # Filter out already bound pages
             for page in pages:
-                if page['page_id'] in exist_page_ids:
-                    page['is_bound'] = True
-                else:
-                    page['is_bound'] = False
+                page['is_bound'] = page['page_id'] in exist_page_ids
             pre_import_info = {
                 'workspace_name': source_info['workspace_name'],
                 'workspace_icon': source_info['workspace_icon'],
